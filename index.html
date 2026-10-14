@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ПРО-Смета | Калькулятор</title>
+    <!-- Подключаем Tailwind CSS для быстрого и красивого дизайна -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем библиотеку для генерации PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Скрываем элементы при печати/экспорте в PDF */
+        .no-print { display: block; }
+        .pdf-only { display: none; }
+        /* Красивые чекбоксы */
+        input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: #3b82f6; }
+        input[type="number"] { width: 4rem; text-align: center; border: 1px solid #d1d5db; border-radius: 0.25rem; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased pb-20">
+
+    <!-- НАСТРОЙКИ (МЕНЯТЬ ТУТ) -->
+    <script>
+        // Здесь мастер сам меняет свои услуги и цены. Это всё, что нужно редактировать.
+        const MASTER_INFO = {
+            name: "Алексей Смирнов",
+            phone: "+7 (999) 123-45-67",
+            telegram: "alex_smirnov_build", // Для кнопки связи
+            logoText: "РЕМОНТ-ПРО"
+        };
+
+        const PRICELIST = [
+            { id: 'demontazh', name: 'Демонтаж (пол/стены)', price: 400, unit: 'м²' },
+            { id: 'shtukaturka', name: 'Штукатурка стен по маякам', price: 650, unit: 'м²' },
+            { id: 'styazhka', name: 'Стяжка пола (полусухая)', price: 500, unit: 'м²' },
+            { id: 'plitka', name: 'Укладка плитки / керамогранита', price: 1500, unit: 'м²' },
+            { id: 'oboi', name: 'Поклейка обоев', price: 300, unit: 'м²' },
+            { id: 'elektrika', name: 'Точка электрики', price: 600, unit: 'шт' },
+            { id: 'santehnika', name: 'Точка водоснабжения (ХВС/ГВС)', price: 2500, unit: 'шт' }
+        ];
+    </script>
+
+    <!-- Шапка -->
+    <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
+        <div class="font-bold text-xl" id="headerLogo">РЕМОНТ-ПРО</div>
+        <button onclick="toggleMode()" id="modeBtn" class="text-xs bg-white text-blue-600 px-3 py-1 rounded-full font-semibold shadow">В режим ПРО (Замер)</button>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР ДЛЯ PDF -->
+    <main id="appContent" class="p-4 max-w-lg mx-auto bg-white mt-4 shadow-sm rounded-lg min-h-screen">
+        
+        <!-- Шапка для PDF (скрыта на сайте) -->
+        <div id="pdfHeader" class="pdf-only border-b-2 border-gray-800 pb-4 mb-6">
+            <h1 class="text-2xl font-bold uppercase text-gray-800" id="pdfLogo">РЕМОНТ-ПРО</h1>
+            <p class="text-gray-600 font-bold" id="pdfMasterName">Мастер: Алексей Смирнов</p>
+            <p class="text-gray-600 font-bold" id="pdfMasterPhone">Телефон: +7 (999) 123-45-67</p>
+            <h2 class="text-xl font-bold mt-4">СМЕТА НА РЕМОНТНЫЕ РАБОТЫ</h2>
+            <div id="clientInfoBlock" class="mt-2 text-sm hidden">
+                <p><strong>Объект/Клиент:</strong> <span id="outClientName"></span></p>
+            </div>
+        </div>
+
+        <div id="introText" class="mb-6 text-sm text-gray-600 no-print">
+            Выберите необходимые работы и укажите площадь/количество, чтобы получить предварительный расчёт.
+        </div>
+
+        <!-- Поля для режима мастера -->
+        <div id="masterFields" class="hidden mb-6 bg-blue-50 p-3 rounded border border-blue-100 no-print">
+            <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Имя клиента / Адрес (для сметы)</label>
+            <input type="text" id="clientName" placeholder="Например: ЖК Легенда, кв 45" class="w-full p-2 border rounded text-sm mb-2">
+            <p class="text-xs text-blue-600">В этом режиме вы можете сформировать точную смету и выгрузить её в PDF прямо клиенту в WhatsApp.</p>
+        </div>
+
+        <!-- Динамический список работ -->
+        <div id="servicesList" class="space-y-4">
+            <!-- Генерируется через JS -->
+        </div>
+
+        <!-- Итог -->
+        <div class="mt-8 border-t-2 border-gray-200 pt-4 pb-4">
+            <div class="flex justify-between items-center text-lg">
+                <span class="font-bold text-gray-700">ИТОГО РАБОТЫ:</span>
+                <span class="font-bold pr-2" id="totalPrice">0 ₽</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1 pdf-only">* Цены указаны ориентировочные, без учета стоимости черновых и чистовых материалов.</p>
+            <p class="text-xs text-gray-400 mt-1 no-print" id="clientDisclaimer">* Это предварительный расчёт. Точная смета составляется после бесплатного замера.</p>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="mt-6 flex flex-col gap-3 no-print" id="actionButtons">
+            <!-- Кнопка клиента -->
+            <button onclick="sendToTelegram()" id="btnClient" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-green-600 active:bg-green-700 transition">
+                Отправить заявку в WhatsApp
+            </button>
+            <!-- Кнопки мастера -->
+            <button onclick="generatePDF()" id="btnMasterPdf" class="hidden w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-blue-700 active:bg-blue-800 transition">
+                Выгрузить PDF Смету
+            </button>
+            <button onclick="resetForm()" class="w-full bg-gray-200 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-300">
+                Сбросить
+            </button>
+        </div>
+    </main>
+
+    <script>
+        let isMasterMode = false;
+
+        // Инициализация данных
+        document.getElementById('headerLogo').innerText = MASTER_INFO.logoText;
+        document.getElementById('pdfLogo').innerText = MASTER_INFO.logoText;
+        document.getElementById('pdfMasterName').innerText = "Мастер: " + MASTER_INFO.name;
+        document.getElementById('pdfMasterPhone').innerText = "Телефон: " + MASTER_INFO.phone;
+
+        // Рендер прайса
+        const listContainer = document.getElementById('servicesList');
+        PRICELIST.forEach(item => {
+            const row = document.createElement('div');
+            row.className = "flex items-center justify-between p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-100";
+            row.innerHTML = `
+                <div class="flex-1 pr-2">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" id="check_${item.id}" onchange="toggleInput('${item.id}'); calculateTotal()" class="mt-1">
+                        <div>
+                            <div class="font-semibold text-sm leading-tight">${item.name}</div>
+                            <div class="text-xs text-gray-500 mt-1">${item.price} ₽ / ${item.unit}</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="flex items-center gap-1 opacity-50 pointer-events-none transition-opacity duration-200" id="wrap_${item.id}">
+                    <input type="number" id="qty_${item.id}" min="1" value="1" oninput="calculateTotal()" class="h-8 text-sm bg-white">
+                    <span class="text-xs text-gray-500 w-4">${item.unit}</span>
+                </div>
+            `;
+            listContainer.appendChild(row);
+        });
+
+        function toggleInput(id) {
+            const wrapper = document.getElementById(`wrap_${id}`);
+            const isChecked = document.getElementById(`check_${id}`).checked;
+            if (isChecked) {
+                wrapper.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                wrapper.classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById(`qty_${id}`).value = 1;
+            }
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            PRICELIST.forEach(item => {
+                const isChecked = document.getElementById(`check_${item.id}`).checked;
+                const qty = parseFloat(document.getElementById(`qty_${item.id}`).value) || 0;
+                if (isChecked) {
+                    total += item.price * qty;
+                }
+            });
+            document.getElementById('totalPrice').innerText = total.toLocaleString('ru-RU') + ' ₽';
+            return total;
+        }
+
+        function toggleMode() {
+            isMasterMode = !isMasterMode;
+            document.getElementById('modeBtn').innerText = isMasterMode ? "Выйти из ПРО" : "В режим ПРО (Замер)";
+            document.getElementById('modeBtn').classList.toggle('bg-gray-800', isMasterMode);
+            document.getElementById('modeBtn').classList.toggle('text-white', isMasterMode);
+            
+            // UI changes
+            document.getElementById('masterFields').classList.toggle('hidden', !isMasterMode);
+            document.getElementById('introText').classList.toggle('hidden', isMasterMode);
+            document.getElementById('clientDisclaimer').classList.toggle('hidden', isMasterMode);
+            
+            document.getElementById('btnClient').classList.toggle('hidden', isMasterMode);
+            document.getElementById('btnMasterPdf').classList.toggle('hidden', !isMasterMode);
+        }
+
+        function resetForm() {
+            PRICELIST.forEach(item => {
+                document.getElementById(`check_${item.id}`).checked = false;
+                toggleInput(item.id);
+            });
+            document.getElementById('clientName').value = '';
+            calculateTotal();
+        }
+
+        function generatePDF() {
+            const clientName = document.getElementById('clientName').value.trim();
+            if(clientName) {
+                document.getElementById('outClientName').innerText = clientName;
+                document.getElementById('clientInfoBlock').classList.remove('hidden');
+            } else {
+                document.getElementById('clientInfoBlock').classList.add('hidden');
+            }
+
+            // Переключаем классы для печати (чтобы pdf-only стали видимыми)
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .no-print { display: none !important; }
+                .pdf-only { display: block !important; }
+                body { background: white; }
+                main { box-shadow: none; max-width: 100%; margin: 0; padding: 20px; }
+            `;
+            document.head.appendChild(style);
+
+            // Очищаем невыбранные пункты для чистоты сметы
+            PRICELIST.forEach(item => {
+                const row = document.getElementById(`check_${item.id}`).closest('.flex.items-center.justify-between');
+                if(!document.getElementById(`check_${item.id}`).checked) {
+                    row.style.display = 'none';
+                } else {
+                    // Прячем чекбоксы в PDF
+                    document.getElementById(`check_${item.id}`).style.display = 'none';
+                    // Меняем инпуты на текст
+                    const qtyVal = document.getElementById(`qty_${item.id}`).value;
+                    const wrap = document.getElementById(`wrap_${item.id}`);
+                    wrap.innerHTML = `<span class="font-bold text-sm">${qtyVal} ${item.unit}</span>`;
+                }
+            });
+
+            const element = document.getElementById('appContent');
+            const opt = {
+                margin:       10,
+                filename:     `Smeta_${clientName || 'object'}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Генерируем PDF
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Восстанавливаем интерфейс
+                document.head.removeChild(style);
+                location.reload(); // Быстрый сброс UI в исходное состояние
+            });
+        }
+
+        function sendToTelegram() {
+            const total = calculateTotal();
+            if(total === 0) {
+                alert('Пожалуйста, выберите хотя бы одну услугу для расчета.');
+                return;
+            }
+            
+            let msg = `Здравствуйте! Хочу заказать ремонт. Предварительная сумма по калькулятору: ${total} руб.\n\nВыбрано:\n`;
+            PRICELIST.forEach(item => {
+                if(document.getElementById(`check_${item.id}`).checked) {
+                    const qty = document.getElementById(`qty_${item.id}`).value;
+                    msg += `- ${item.name}: ${qty} ${item.unit}\n`;
+                }
+            });
+            
+            const encodedMsg = encodeURIComponent(msg);
+            // Формируем ссылку на WhatsApp (или Telegram: https://t.me/${MASTER_INFO.telegram}?text=...)
+            const link = `https://wa.me/?text=${encodedMsg}`;
+            window.open(link, '_blank');
+        }
+    </script>
+</body>
+</html>
