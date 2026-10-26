@@ -14,10 +14,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android platform
+      - name: Prepare Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          echo "Android home: $ANDROID_HOME"
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)
+          echo "SDK manager: $SDKMANAGER"
+          if [ -z "$SDKMANAGER" ]; then echo 'sdkmanager unavailable'; exit 1; fi
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
