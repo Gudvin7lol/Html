@@ -2,6 +2,10 @@ package ru.tvcustom.launcher;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.net.Uri;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import java.io.InputStream;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -50,10 +54,12 @@ public final class MainActivity extends Activity {
     private boolean initialFocus=true;
     private String appFilter="all";
     private String searchQuery="";
+    private Bitmap customPoster;
+    private static final int REQ_POSTER=439;
 
     static class TvApp {
-        String pkg,label; Drawable icon; Intent intent;
-        TvApp(String p,String l,Drawable d,Intent i){pkg=p;label=l;icon=d;intent=i;}
+        String pkg,label; Drawable icon,banner; Intent intent;
+        TvApp(String p,String l,Drawable d,Drawable b,Intent i){pkg=p;label=l;icon=d;banner=b;intent=i;}
     }
 
     @Override public void onCreate(Bundle bundle) {
@@ -129,7 +135,7 @@ public final class MainActivity extends Activity {
         LinearLayout base=col();base.setPadding(dp(32),dp(18),dp(32),dp(22));
         root.addView(base,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout top=row();
-        TextView logo=text("XIAOMI  TV  CUSTOM",23,WHITE,true);
+        TextView logo=text("xiaomi TV",24,WHITE,true);
         top.addView(logo,new LinearLayout.LayoutParams(0,dp(52),1f));
         statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),19,WHITE,false);
         statusClock.setGravity(Gravity.CENTER);top.addView(statusClock,new LinearLayout.LayoutParams(dp(80),dp(52)));
@@ -145,7 +151,7 @@ public final class MainActivity extends Activity {
         LinearLayout main=row();main.setGravity(Gravity.TOP);
         LinearLayout side=col();side.setPadding(0,dp(24),dp(14),0);
         main.addView(side,new LinearLayout.LayoutParams(dp(194),-1));
-        String[] pages={"Главная","Кино и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
+        String[] pages={"Главная","Фильмы и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
         String[] icons={"⌂","▣","▦","▭","◇","⚙"};
         for(int i=0;i<pages.length;i++){
             final int n=i;
@@ -188,38 +194,112 @@ public final class MainActivity extends Activity {
     }
     private void home(LinearLayout c){
         FrameLayout hero=new FrameLayout(this);
-        hero.setBackground(bg(0xCC202631,false,20));
+        hero.setBackground(bg(0xEB161D28,false,18));
         hero.setClipToOutline(true);
-        HeroScene art=new HeroScene(this);
-        hero.addView(art,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout content=col();
-        content.setPadding(dp(23),dp(18),dp(18),dp(14));
-        hero.addView(content,new FrameLayout.LayoutParams(-1,-1));
-        TextView kicker=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",11,ACCENT,true);
-        kicker.setLetterSpacing(0.09f);
-        content.addView(kicker);gap(content,9);
-        TextView slogan=text("Твой экран.\nТвои правила.",29,WHITE,true);
-        slogan.setLineSpacing(dp(0),1f);
-        content.addView(slogan);gap(content,7);
-        content.addView(text("Без рекламы в меню. Всё нужное под рукой.",13,0xFFD1D6DE,false));
-        gap(content,14);
-        LinearLayout actions=row();
-        pill(actions,"▶  YouTube + VPN",this::launchYouTube);
-        pill(actions,"◇  Smart VPN",this::openVpn);
-        content.addView(actions);
-        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(225)));
-        gap(c,21);
-        sectionHead(c,"Избранные приложения","Долгое нажатие ОК добавляет программу в избранное",()->switchTo(2));
+        Bitmap poster=loadPoster();
+        if(poster!=null){
+            ImageView bgImage=new ImageView(this);
+            bgImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            bgImage.setImageBitmap(poster);
+            hero.addView(bgImage,new FrameLayout.LayoutParams(-1,-1));
+        }else{
+            hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
+        }
+        View shade=new View(this);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+              new int[]{0xFB0B111D,0xE40C1420,0x96141A24,0x10000000}));
+        hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+
+        LinearLayout overlay=col();
+        overlay.setPadding(dp(28),dp(24),dp(14),dp(10));
+        hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
+        TextView tag=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",12,ACCENT,true);
+        tag.setLetterSpacing(.11f);overlay.addView(tag);gap(overlay,14);
+        overlay.addView(text("Кино начинается\nздесь",34,WHITE,true));gap(overlay,8);
+        overlay.addView(text("Твои приложения, фильмы и каналы.\nНикаких рекламных рекомендаций.",14,0xFFD4DCE7,false));gap(overlay,17);
+        LinearLayout buttons=row();
+        pill(buttons,"▶  Смотреть",this::openBestVideo);
+        pill(buttons,"◆  VPN",this::openVpn);
+        overlay.addView(buttons);
+        int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
+            getResources().getDisplayMetrics().density);
+        int heroHeight=Math.min(310,Math.max(220,(int)(screenHeight*.39f)));
+        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
+        gap(c,15);
+        sectionHead(c,"Мои приложения","Долгое нажатие ОК — добавить в избранное",()->switchTo(2));
         appStrip(c,forHome(),9);
-        gap(c,13);
-        sectionHead(c,"Быстрые действия","Кнопка MENU на пульте открывает центр управления",()->switchTo(6));
-        LinearLayout quick=row();
-        quickTile(quick,"◆  VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
-        quickTile(quick,"▣  Приложения",apps.size()+" установлено",()->switchTo(2));
-        quickTile(quick,"▭  HDMI","Системные входы",()->switchTo(3));
-        c.addView(quick);
-        gap(c,16);
-        c.addView(text("XIAOMI TV CUSTOM  ·  v1.1",11,0xFF8E9AAB,false));
+        ArrayList<TvApp> recent=recentApps();
+        gap(c,12);
+        if(!recent.isEmpty()){
+            sectionHead(c,"Недавно открытые","Запущенные с нашего главного экрана программы",()->switchTo(2));
+            appStrip(c,recent,6);
+        }else{
+            sectionHead(c,"Быстрый доступ","Реальные действия, без имитации системных кнопок",()->switchTo(6));
+            LinearLayout quick=row();
+            quickTile(quick,"◆  VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
+            quickTile(quick,"▦  Приложения",apps.size()+" установлено",()->switchTo(2));
+            quickTile(quick,"▭  HDMI","Настройки входов",()->switchTo(3));
+            c.addView(quick);
+        }
+    }
+    private void openBestVideo(){
+        for(TvApp a:forHome())if(isMedia(a)&&!isYouTube(a)){openDirect(a);return;}
+        launchYouTube();
+    }
+    private ArrayList<TvApp> recentApps(){
+        ArrayList<TvApp> result=new ArrayList<>();
+        for(String pkg:preferences.getString("recent_apps","").split(",")){
+            if(pkg.isEmpty())continue;
+            for(TvApp a:apps)if(a.pkg.equals(pkg)){result.add(a);break;}
+        }
+        return result;
+    }
+    private void rememberApp(TvApp a){
+        ArrayList<String> ids=new ArrayList<>();ids.add(a.pkg);
+        for(String p:preferences.getString("recent_apps","").split(",")){
+            if(!p.isEmpty()&&!ids.contains(p)&&ids.size()<8)ids.add(p);
+        }
+        preferences.edit().putString("recent_apps",TextUtils.join(",",ids)).apply();
+    }
+    private Bitmap loadPoster(){
+        if(customPoster!=null)return customPoster;
+        String saved=preferences.getString("hero_poster","");
+        if(saved.isEmpty())return null;
+        try{
+            Uri uri=Uri.parse(saved);
+            BitmapFactory.Options meta=new BitmapFactory.Options();
+            meta.inJustDecodeBounds=true;
+            try(InputStream src=getContentResolver().openInputStream(uri)){
+                BitmapFactory.decodeStream(src,null,meta);
+            }
+            if(meta.outWidth<=0||meta.outHeight<=0)return null;
+            int sample=1;
+            while(meta.outWidth/sample>1400||meta.outHeight/sample>900)sample*=2;
+            BitmapFactory.Options opt=new BitmapFactory.Options();
+            opt.inSampleSize=sample; opt.inPreferredConfig=Bitmap.Config.RGB_565;
+            try(InputStream src=getContentResolver().openInputStream(uri)){
+                customPoster=BitmapFactory.decodeStream(src,null,opt);
+            }
+        }catch(Exception ignored){}
+        return customPoster;
+    }
+    private void pickPoster(){
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("image/*");
+        try{startActivityForResult(i,REQ_POSTER);}
+        catch(Exception e){Toast.makeText(this,"Не удаётся открыть выбор изображения",Toast.LENGTH_LONG).show();}
+    }
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request==REQ_POSTER && result==RESULT_OK && data!=null && data.getData()!=null){
+            Uri uri=data.getData();
+            try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}
+            catch(Exception ignored){}
+            customPoster=null;
+            preferences.edit().putString("hero_poster",uri.toString()).apply();
+            render(page);
+        }
     }
     private void sectionHead(LinearLayout c,String title,String subtitle,Runnable action){
         LinearLayout header=row();
@@ -374,6 +454,10 @@ public final class MainActivity extends Activity {
     private void settings(LinearLayout c){
         title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
         c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
+        action(c,"Постер главного экрана","Выбрать свою кинематографическую картинку",this::pickPoster);
+        action(c,"Сбросить постер","Вернуть стандартный фон",()->{
+            customPoster=null;preferences.edit().remove("hero_poster").apply();render(5);
+        });
         setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
         setting(c,"Плавные переходы","Лёгкое увеличение активной карточки","motion",true);
         gap(c,16);
@@ -490,7 +574,7 @@ public final class MainActivity extends Activity {
                     Intent i=new Intent(Intent.ACTION_MAIN).addCategory(category)
                         .setClassName(pkg,info.activityInfo.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     String label=String.valueOf(info.loadLabel(pm));
-                    unique.put(pkg,new TvApp(pkg,label,info.loadIcon(pm),i));
+                    unique.put(pkg,new TvApp(pkg,label,info.loadIcon(pm),info.loadBanner(pm),i));
                 }catch(Exception ignored){}
             }
         }
@@ -540,7 +624,7 @@ public final class MainActivity extends Activity {
         Toast.makeText(this,"Установите v2RayTun",Toast.LENGTH_LONG).show();
     }
     private void openDirect(TvApp a){
-        try{startActivity(a.intent);}
+        try{rememberApp(a);startActivity(a.intent);}
         catch(Exception e){Toast.makeText(this,"Не удаётся открыть "+a.label,Toast.LENGTH_LONG).show();}
     }
     private void trySettings(String action){
