@@ -13,7 +13,7 @@ import android.view.View;
 public final class SceneView extends View {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean scenic = true;
-    public SceneView(Context context) { super(context); setLayerType(View.LAYER_TYPE_SOFTWARE, null); }
+    public SceneView(Context context) { super(context);  }
     public void setScenic(boolean value) { scenic = value; invalidate(); }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
