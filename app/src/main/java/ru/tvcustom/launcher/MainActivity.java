@@ -307,15 +307,15 @@ public final class MainActivity extends Activity {
             .show();
     }
     private void hdmi(LinearLayout c){
-        title(c,"Подключения","Быстрый переход к настройкам входов телевизора.");
-        action(c,"HDMI / Источники сигнала","Открыть системные настройки для выбора входа",
+        title(c,"HDMI и устройства","Быстрый доступ к системным источникам и настройкам.");
+        action(c,"Выбор HDMI / Источники","Открыть системные настройки телевизора",
           ()->trySettings(Settings.ACTION_SETTINGS));
         action(c,"Экран и звук","Настройки изображения, динамиков и HDMI-CEC",
           ()->trySettings(Settings.ACTION_SETTINGS));
-        c.addView(text("На разных прошивках Xiaomi переключение HDMI управляется системным меню.",13,MUTED,false));
+        c.addView(text("Android TV не предоставляет обычным приложениям универсальный API переключения HDMI. Здесь открываются настоящие системные настройки.",13,MUTED,false));
     }
     private void vpnPage(LinearLayout c){
-        title(c,"Smart VPN","v2RayTun · настройки подключения");
+        title(c,"Smart VPN","v2RayTun · подключение и правила приложений");
         LinearLayout box=col();box.setPadding(dp(26),dp(22),dp(26),dp(22));
         box.setBackground(bg(SURFACE,false,18));
         box.addView(text(vpnConnected()?"●  VPN подключён":"○  VPN не обнаружен",24,
@@ -326,7 +326,7 @@ public final class MainActivity extends Activity {
         pill(box,"Открыть v2RayTun",this::openVpn);
         gap(box,19);
         box.addView(text("YouTube и VPN",20,WHITE,true));gap(box,8);
-        box.addView(text("Когда включено, при запуске YouTube без VPN сначала откроется v2RayTun. После подключения и возврата запустится YouTube.",14,MUTED,false));
+        box.addView(text("При запуске YouTube лаунчер проверяет системное VPN-подключение. Если VPN нет, откроется v2RayTun для ручного подключения. После возвращения можно продолжить запуск YouTube.",14,MUTED,false));
         gap(box,12);
         boolean on=preferences.getBoolean("youtube_vpn",true);
         pill(box,on?"Автопроверка: ВКЛ  ·  изменить":"Автопроверка: ВЫКЛ  ·  изменить",()->{
@@ -334,23 +334,68 @@ public final class MainActivity extends Activity {
         });
         c.addView(box);
         gap(c,14);
-        c.addView(text("Прямое включение VPN одной командой пока не обещается: версия клиента должна разрешать управление извне.",13,MUTED,false));
+        c.addView(text("Прямое включение VPN требует подтверждённой интеграции с v2RayTun. Лаунчер не выключает VPN сам и не сбрасывает профили.",13,MUTED,false));
+    }
+    private void controlCenter(LinearLayout c){
+        title(c,"Центр управления","Быстрые команды с пульта · меню открывается кнопкой MENU");
+        LinearLayout status=row();
+        quickTile(status,"◆  VPN",vpnConnected()?"Подключён":"Нет подключения",this::openVpn);
+        quickTile(status,"◉  Сеть",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        quickTile(status,"▣  Хранилище",freeSpace(),()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
+        c.addView(status);gap(c,16);
+        c.addView(text("Быстрые настройки",19,WHITE,true));gap(c,12);
+        LinearLayout r1=row();
+        quickTile(r1,"Wi-Fi","Открыть параметры",()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        quickTile(r1,"Bluetooth","Устройства",()->trySettings(Settings.ACTION_BLUETOOTH_SETTINGS));
+        c.addView(r1);gap(c,11);
+        LinearLayout r2=row();
+        quickTile(r2,"YouTube","Проверить VPN",this::launchYouTube);
+        quickTile(r2,"Входы HDMI","Настройки телевизора",()->switchTo(3));
+        c.addView(r2);gap(c,11);
+        LinearLayout r3=row();
+        quickTile(r3,"Приложения","Список программ",()->switchTo(2));
+        quickTile(r3,"Оформление","Настроить вид",()->switchTo(5));
+        c.addView(r3);gap(c,18);
+        c.addView(text("Переключатели открывают соответствующие системные настройки. Это не имитация Wi-Fi или Bluetooth.",12,MUTED,false));
+    }
+    private String networkSummary(){
+        try{
+            ConnectivityManager m=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+            if(m==null)return "Статус неизвестен";
+            Network n=m.getActiveNetwork();
+            NetworkCapabilities caps=n==null?null:m.getNetworkCapabilities(n);
+            if(caps==null)return "Не подключено";
+            if(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))return "Wi-Fi";
+            if(caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))return "Ethernet";
+            if(caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))return "VPN";
+            return "Сеть подключена";
+        }catch(Exception e){return "Статус неизвестен";}
     }
     private void settings(LinearLayout c){
-        title(c,"Настройки интерфейса","Лёгкие эффекты для Xiaomi MiTV-MOOQ1.");
-        setting(c,"Кинематографический фон","Градиент, горы, мягкое свечение","scenic",true);
-        setting(c,"Анимация карточек","Короткое увеличение при выборе","motion",true);
-        setting(c,"VPN перед YouTube","Предложить подключение, если VPN выключен","youtube_vpn",true);
-        action(c,"Системные настройки","Wi-Fi, приложения, звук и память",
+        title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
+        c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
+        setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
+        setting(c,"Плавные переходы","Лёгкое увеличение активной карточки","motion",true);
+        gap(c,16);
+        c.addView(text("СЦЕНАРИИ",12,ACCENT,true));gap(c,9);
+        setting(c,"VPN перед YouTube","Открывать v2RayTun при отсутствии соединения","youtube_vpn",true);
+        action(c,"Настроить VPN","Открыть установленный клиент v2RayTun",this::openVpn);
+        gap(c,16);
+        c.addView(text("СИСТЕМА",12,ACCENT,true));gap(c,9);
+        action(c,"Состояние памяти",freeSpace()+" · нажми для настроек хранилища",
+               ()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
+        action(c,"Wi-Fi и Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        action(c,"Настройки Android TV","Оригинальное меню Xiaomi",
                 ()->trySettings(Settings.ACTION_SETTINGS));
-        action(c,"Сбросить избранное","Удалить пользовательский порядок, не затрагивая приложения",()->{
+        action(c,"Очистить избранное","Не удаляет приложения и их данные",()->{
             new AlertDialog.Builder(this).setTitle("Очистить избранное?")
+                .setMessage("Удалить только отметки избранных программ?")
                 .setNegativeButton("Отмена",null).setPositiveButton("Очистить",(d,w)->{
                     preferences.edit().remove("favorites").apply();render(5);
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.0 · Android TV 11 · без root",13,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.1 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
