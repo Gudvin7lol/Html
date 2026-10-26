@@ -38,6 +38,11 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private FrameLayout panel;
     private SceneView background;
+    private TextView statusClock, statusVpn;
+    private final android.os.Handler indicatorHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable indicatorTicker = new Runnable() {
+        @Override public void run() { refreshIndicators(); indicatorHandler.postDelayed(this, 60000); }
+    };
     private int page=0;
     private boolean pendingYouTube=false;
     private boolean initialFocus=true;
@@ -56,6 +61,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume();
+        indicatorHandler.removeCallbacks(indicatorTicker);
+        indicatorHandler.post(indicatorTicker);
         if(panel!=null) {
             refreshApps();
             if(pendingYouTube && vpnConnected()) {
@@ -64,6 +71,18 @@ public final class MainActivity extends Activity {
                 if(youtube!=null) { openDirect(youtube); return; }
             }
             render(page);
+        }
+    }
+    @Override protected void onPause() {
+        indicatorHandler.removeCallbacks(indicatorTicker);
+        super.onPause();
+    }
+    private void refreshIndicators() {
+        if(statusClock!=null) statusClock.setText(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()));
+        if(statusVpn!=null) {
+            boolean on=vpnConnected();
+            statusVpn.setText(on?"●  VPN":"○  VPN");
+            statusVpn.setTextColor(on?0xFF89DEB2:ACCENT);
         }
     }
     @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
@@ -104,12 +123,12 @@ public final class MainActivity extends Activity {
         LinearLayout top=row();
         TextView logo=text("XIAOMI  TV  CUSTOM",23,WHITE,true);
         top.addView(logo,new LinearLayout.LayoutParams(0,dp(52),1f));
-        TextView clock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),19,WHITE,false);
-        clock.setGravity(Gravity.CENTER);top.addView(clock,new LinearLayout.LayoutParams(dp(80),dp(52)));
-        TextView vpnPill=text(vpnConnected()?"●  VPN":"○  VPN",16,vpnConnected()?0xFF89DEB2:ACCENT,true);
-        vpnPill.setGravity(Gravity.CENTER);selectable(vpnPill,SURFACE);
-        vpnPill.setOnClickListener(v->switchTo(4));
-        top.addView(vpnPill,new LinearLayout.LayoutParams(dp(102),dp(45)));
+        statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),19,WHITE,false);
+        statusClock.setGravity(Gravity.CENTER);top.addView(statusClock,new LinearLayout.LayoutParams(dp(80),dp(52)));
+        statusVpn=text(vpnConnected()?"●  VPN":"○  VPN",16,vpnConnected()?0xFF89DEB2:ACCENT,true);
+        statusVpn.setGravity(Gravity.CENTER);selectable(statusVpn,SURFACE);
+        statusVpn.setOnClickListener(v->switchTo(4));
+        top.addView(statusVpn,new LinearLayout.LayoutParams(dp(102),dp(45)));
         TextView gear=text("⚙",28,ACCENT,true);
         gear.setGravity(Gravity.CENTER);selectable(gear,SURFACE);
         gear.setOnClickListener(v->switchTo(5));top.addView(gear,new LinearLayout.LayoutParams(dp(54),dp(45)));
@@ -200,8 +219,8 @@ public final class MainActivity extends Activity {
     }
     private void hdmi(LinearLayout c){
         title(c,"Подключения","Быстрый переход к настройкам входов телевизора.");
-        action(c,"HDMI / Источники сигнала","Открыть выбор входа через системный интерфейс",
-          ()->trySettings("android.settings.INPUT_METHOD_SETTINGS"));
+        action(c,"HDMI / Источники сигнала","Открыть системные настройки для выбора входа",
+          ()->trySettings(Settings.ACTION_SETTINGS));
         action(c,"Экран и звук","Настройки изображения, динамиков и HDMI-CEC",
           ()->trySettings(Settings.ACTION_SETTINGS));
         c.addView(text("На разных прошивках Xiaomi переключение HDMI управляется системным меню.",13,MUTED,false));
