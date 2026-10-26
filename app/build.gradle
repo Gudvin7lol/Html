@@ -1,0 +1,16 @@
+plugins { id "com.android.application" }
+android {
+    namespace "ru.tvcustom.launcher"
+    compileSdk 35
+    defaultConfig {
+        applicationId "ru.tvcustom.launcher"
+        minSdk 26
+        targetSdk 30
+        versionCode 10
+        versionName "1.0.0"
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

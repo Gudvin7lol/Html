@@ -1,0 +1,400 @@
+package ru.tvcustom.launcher;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.net.Network;
+import android.os.Bundle;
+import android.os.StatFs;
+import android.provider.Settings;
+import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.KeyEvent;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+import java.util.*;
+import java.text.SimpleDateFormat;
+
+public final class MainActivity extends Activity {
+    private static final int ACCENT=0xFFF1AF91, WHITE=0xFFF1F3F6, MUTED=0xFFABB7C5;
+    private static final int SURFACE=0xE8202631, SURFACE2=0xF1222C39;
+    private final ArrayList<TvApp> apps=new ArrayList<>();
+    private final ArrayList<TextView> nav=new ArrayList<>();
+    private SharedPreferences preferences;
+    private FrameLayout panel;
+    private SceneView background;
+    private int page=0;
+    private boolean pendingYouTube=false;
+    private boolean initialFocus=true;
+
+    static class TvApp {
+        String pkg,label; Drawable icon; Intent intent;
+        TvApp(String p,String l,Drawable d,Intent i){pkg=p;label=l;icon=d;intent=i;}
+    }
+
+    @Override public void onCreate(Bundle bundle) {
+        super.onCreate(bundle);
+        preferences=getSharedPreferences("tv_custom",MODE_PRIVATE);
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        refreshApps(); build();
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        if(panel!=null) {
+            refreshApps();
+            if(pendingYouTube && vpnConnected()) {
+                pendingYouTube=false;
+                TvApp youtube=youtubeApp();
+                if(youtube!=null) { openDirect(youtube); return; }
+            }
+            render(page);
+        }
+    }
+    @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
+        if(keyCode==KeyEvent.KEYCODE_MENU) { switchTo(5); return true; }
+        return super.onKeyDown(keyCode,e);
+    }
+    private int dp(float v){return (int)(getResources().getDisplayMetrics().density*v+0.5f);}
+    private LinearLayout col(){ LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l; }
+    private LinearLayout row(){ LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l; }
+    private TextView text(String s,int size,int color,boolean bold){
+        TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);
+        if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        t.setGravity(Gravity.CENTER_VERTICAL);return t;
+    }
+    private GradientDrawable bg(int color,boolean outlined,int radius){
+        GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));
+        if(outlined)d.setStroke(dp(2),ACCENT);return d;
+    }
+    private void gap(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
+    private void selectable(View v,int color) {
+        v.setFocusable(true);v.setFocusableInTouchMode(false);
+        v.setBackground(bg(color,false,14));
+        v.setOnFocusChangeListener((view,focused)->{
+            view.setBackground(bg(focused?0xF23A3335:color,focused,14));
+            if(preferences.getBoolean("motion",true)) {
+                view.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f).setDuration(110).start();
+            } else {view.setScaleX(1f);view.setScaleY(1f);}
+            view.setElevation(dp(focused?7:0));
+        });
+    }
+    private void build(){
+        FrameLayout root=new FrameLayout(this);
+        background=new SceneView(this);
+        background.setScenic(preferences.getBoolean("scenic",true));
+        root.addView(background,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout base=col();base.setPadding(dp(32),dp(18),dp(32),dp(22));
+        root.addView(base,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout top=row();
+        TextView logo=text("XIAOMI  TV  CUSTOM",23,WHITE,true);
+        top.addView(logo,new LinearLayout.LayoutParams(0,dp(52),1f));
+        TextView clock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),19,WHITE,false);
+        clock.setGravity(Gravity.CENTER);top.addView(clock,new LinearLayout.LayoutParams(dp(80),dp(52)));
+        TextView vpnPill=text(vpnConnected()?"●  VPN":"○  VPN",16,vpnConnected()?0xFF89DEB2:ACCENT,true);
+        vpnPill.setGravity(Gravity.CENTER);selectable(vpnPill,SURFACE);
+        vpnPill.setOnClickListener(v->switchTo(4));
+        top.addView(vpnPill,new LinearLayout.LayoutParams(dp(102),dp(45)));
+        TextView gear=text("⚙",28,ACCENT,true);
+        gear.setGravity(Gravity.CENTER);selectable(gear,SURFACE);
+        gear.setOnClickListener(v->switchTo(5));top.addView(gear,new LinearLayout.LayoutParams(dp(54),dp(45)));
+        base.addView(top,new LinearLayout.LayoutParams(-1,dp(58)));
+
+        LinearLayout main=row();main.setGravity(Gravity.TOP);
+        LinearLayout side=col();side.setPadding(0,dp(24),dp(14),0);
+        main.addView(side,new LinearLayout.LayoutParams(dp(194),-1));
+        String[] pages={"Главная","Кино и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
+        String[] icons={"⌂","▣","▦","▭","◇","⚙"};
+        for(int i=0;i<pages.length;i++){
+            final int n=i;
+            TextView item=text(icons[i]+"   "+pages[i],17,WHITE,i==0);
+            item.setPadding(dp(14),0,dp(4),0);selectable(item,0x55202631);
+            item.setOnClickListener(v->switchTo(n));
+            side.addView(item,new LinearLayout.LayoutParams(-1,dp(50)));
+            gap(side,8);nav.add(item);
+        }
+        gap(side,16);
+        side.addView(text("ANDROID TV 11",12,0xFF8798AB,false));
+        panel=new FrameLayout(this);
+        main.addView(panel,new LinearLayout.LayoutParams(0,-1,1f));
+        base.addView(main,new LinearLayout.LayoutParams(-1,0,1f));
+        setContentView(root);render(0);
+        nav.get(0).requestFocus();
+    }
+    private void switchTo(int to){page=to;render(to);if(to<nav.size())nav.get(to).requestFocus();}
+    private void render(int to){
+        if(panel==null)return;
+        panel.removeAllViews();
+        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
+        sc.setVerticalScrollBarEnabled(false);sc.setClipToPadding(false);
+        panel.addView(sc,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout c=col();c.setPadding(dp(7),dp(17),dp(8),dp(12));sc.addView(c);
+        switch(to){
+          case 1: streaming(c);break;
+          case 2: allApps(c);break;
+          case 3: hdmi(c);break;
+          case 4: vpnPage(c);break;
+          case 5: settings(c);break;
+          default:home(c);break;
+        }
+    }
+    private void title(LinearLayout parent,String t,String subtitle){
+        parent.addView(text(t,26,WHITE,true));gap(parent,4);
+        if(subtitle!=null)parent.addView(text(subtitle,13,MUTED,false));
+        gap(parent,16);
+    }
+    private void home(LinearLayout c){
+        LinearLayout hero=col();
+        hero.setPadding(dp(27),dp(21),dp(22),dp(15));
+        hero.setBackground(bg(0x95212935,false,18));
+        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(184)));
+        hero.addView(text("ТВОЙ ДОМАШНИЙ КИНОТЕАТР",13,ACCENT,true));gap(hero,9);
+        hero.addView(text("Всё для просмотра",31,WHITE,true));gap(hero,5);
+        hero.addView(text("Фильмы, сериалы и приложения. Без рекламы и лишних меню.",14,MUTED,false));
+        gap(hero,18);
+        LinearLayout actions=row();
+        pill(actions,"▶  YouTube",()->launchYouTube());
+        pill(actions,"◇  VPN",this::openVpn);
+        pill(actions,"▦  Все приложения",()->switchTo(2));
+        hero.addView(actions);
+        gap(c,21);c.addView(text("Избранные приложения",20,WHITE,true));gap(c,10);
+        appStrip(c,forHome(),10);
+        gap(c,16);c.addView(text("Быстрый доступ",20,WHITE,true));gap(c,11);
+        LinearLayout quick=row();
+        quickTile(quick,"VPN","v2RayTun",this::openVpn);
+        quickTile(quick,"HDMI","Входы телевизора",()->switchTo(3));
+        quickTile(quick,"Память",freeSpace(),()->switchTo(5));
+        c.addView(quick);
+    }
+    private void streaming(LinearLayout c){
+        title(c,"Кино и ТВ","Твои видеосервисы, без навязанных рекомендаций.");
+        ArrayList<TvApp> stream=new ArrayList<>();
+        for(TvApp a:apps){
+            String x=a.label.toLowerCase(Locale.ROOT);
+            if(x.contains("youtube")||x.contains("ivi")||x.contains("иви")||x.contains("кино")||
+               x.contains("okko")||x.contains("окко")||x.contains("wink")||x.contains("видео")||
+               x.contains("zona")||x.contains("зона")||x.contains("netflix")||x.contains("tv+")||
+               x.contains("live tv"))stream.add(a);
+        }
+        if(stream.isEmpty())c.addView(text("Видеоприложения не обнаружены.",16,MUTED,false));
+        else appGrid(c,stream);
+    }
+    private void allApps(LinearLayout c){
+        title(c,"Все приложения","Долгое нажатие ОК: добавить или убрать из избранного.");
+        appGrid(c,apps);
+    }
+    private void hdmi(LinearLayout c){
+        title(c,"Подключения","Быстрый переход к настройкам входов телевизора.");
+        action(c,"HDMI / Источники сигнала","Открыть выбор входа через системный интерфейс",
+          ()->trySettings("android.settings.INPUT_METHOD_SETTINGS"));
+        action(c,"Экран и звук","Настройки изображения, динамиков и HDMI-CEC",
+          ()->trySettings(Settings.ACTION_SETTINGS));
+        c.addView(text("На разных прошивках Xiaomi переключение HDMI управляется системным меню.",13,MUTED,false));
+    }
+    private void vpnPage(LinearLayout c){
+        title(c,"Smart VPN","v2RayTun · настройки подключения");
+        LinearLayout box=col();box.setPadding(dp(26),dp(22),dp(26),dp(22));
+        box.setBackground(bg(SURFACE,false,18));
+        box.addView(text(vpnConnected()?"●  VPN подключён":"○  VPN не обнаружен",24,
+            vpnConnected()?0xFF83E0AE:ACCENT,true));
+        gap(box,8);
+        box.addView(text("Статус определяется по VPN-сети Android. Управление туннелем остаётся в v2RayTun.",14,MUTED,false));
+        gap(box,18);
+        pill(box,"Открыть v2RayTun",this::openVpn);
+        gap(box,19);
+        box.addView(text("YouTube и VPN",20,WHITE,true));gap(box,8);
+        box.addView(text("Когда включено, при запуске YouTube без VPN сначала откроется v2RayTun. После подключения и возврата запустится YouTube.",14,MUTED,false));
+        gap(box,12);
+        boolean on=preferences.getBoolean("youtube_vpn",true);
+        pill(box,on?"Автопроверка: ВКЛ  ·  изменить":"Автопроверка: ВЫКЛ  ·  изменить",()->{
+            preferences.edit().putBoolean("youtube_vpn",!on).apply();render(4);
+        });
+        c.addView(box);
+        gap(c,14);
+        c.addView(text("Прямое включение VPN одной командой пока не обещается: версия клиента должна разрешать управление извне.",13,MUTED,false));
+    }
+    private void settings(LinearLayout c){
+        title(c,"Настройки интерфейса","Лёгкие эффекты для Xiaomi MiTV-MOOQ1.");
+        setting(c,"Кинематографический фон","Градиент, горы, мягкое свечение","scenic",true);
+        setting(c,"Анимация карточек","Короткое увеличение при выборе","motion",true);
+        setting(c,"VPN перед YouTube","Предложить подключение, если VPN выключен","youtube_vpn",true);
+        action(c,"Системные настройки","Wi-Fi, приложения, звук и память",
+                ()->trySettings(Settings.ACTION_SETTINGS));
+        action(c,"Сбросить избранное","Удалить пользовательский порядок, не затрагивая приложения",()->{
+            new AlertDialog.Builder(this).setTitle("Очистить избранное?")
+                .setNegativeButton("Отмена",null).setPositiveButton("Очистить",(d,w)->{
+                    preferences.edit().remove("favorites").apply();render(5);
+                }).show();
+        });
+        gap(c,13);
+        c.addView(text("Xiaomi TV Custom 1.0 · Android TV 11 · без root",13,MUTED,false));
+    }
+    private void setting(LinearLayout c,String name,String detail,String key,boolean def){
+        boolean active=preferences.getBoolean(key,def);
+        action(c,name+(active?"     ●":"     ○"),detail,()->{
+            preferences.edit().putBoolean(key,!active).apply();
+            if(key.equals("scenic"))background.setScenic(!active);
+            render(5);
+        });
+    }
+    private void action(LinearLayout c,String label,String detail,Runnable cb){
+        LinearLayout r=row();r.setPadding(dp(18),dp(9),dp(18),dp(9));
+        selectable(r,SURFACE);r.setOnClickListener(v->cb.run());
+        LinearLayout words=col();words.addView(text(label,17,WHITE,true));
+        words.addView(text(detail,12,MUTED,false));
+        r.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+        r.addView(text("›",25,ACCENT,false));
+        c.addView(r,new LinearLayout.LayoutParams(-1,dp(75)));gap(c,8);
+    }
+    private void pill(LinearLayout into,String label,Runnable cb){
+        TextView b=text(label,15,WHITE,true);b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(15),0,dp(15),0);selectable(b,SURFACE2);
+        b.setOnClickListener(v->cb.run());
+        if(into.getOrientation()==LinearLayout.HORIZONTAL){
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(46));
+            lp.setMargins(0,0,dp(10),0);into.addView(b,lp);
+        } else into.addView(b,new LinearLayout.LayoutParams(dp(260),dp(50)));
+    }
+    private void quickTile(LinearLayout into,String title,String subtitle,Runnable cb){
+        LinearLayout t=col();t.setPadding(dp(16),dp(10),dp(7),dp(7));
+        t.addView(text(title,17,WHITE,true));t.addView(text(subtitle,12,MUTED,false));
+        selectable(t,SURFACE);t.setOnClickListener(v->cb.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(75),1);
+        lp.setMargins(0,0,dp(12),0);into.addView(t,lp);
+    }
+    private void appStrip(LinearLayout c,List<TvApp> list,int max){
+        HorizontalScrollView scroll=new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);scroll.setClipToPadding(false);
+        scroll.setClipChildren(false);
+        LinearLayout r=row();r.setPadding(dp(5),dp(5),dp(8),dp(5));r.setClipChildren(false);
+        for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i));
+        if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
+        scroll.addView(r);c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(139)));
+    }
+    private void appGrid(LinearLayout c,List<TvApp> list){
+        for(int i=0;i<list.size();i+=5){
+            LinearLayout r=row();r.setClipChildren(false);r.setPadding(dp(5),dp(5),dp(5),dp(6));
+            for(int j=i;j<Math.min(list.size(),i+5);j++)tile(r,list.get(j));
+            c.addView(r,new LinearLayout.LayoutParams(-1,dp(137)));
+        }
+    }
+    private void tile(LinearLayout r,TvApp a){
+        LinearLayout b=col();b.setGravity(Gravity.CENTER);b.setPadding(dp(9),dp(10),dp(9),dp(8));
+        selectable(b,SURFACE);
+        ImageView i=new ImageView(this);i.setImageDrawable(a.icon);i.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        b.addView(i,new LinearLayout.LayoutParams(dp(52),dp(52)));gap(b,7);
+        TextView label=text(a.label,12,WHITE,true);
+        label.setGravity(Gravity.CENTER);label.setMaxLines(1);label.setEllipsize(TextUtils.TruncateAt.END);
+        b.addView(label,new LinearLayout.LayoutParams(-1,dp(27)));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(143),dp(116));
+        lp.setMargins(dp(4),0,dp(11),0);r.addView(b,lp);
+        b.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
+        b.setOnLongClickListener(v->{
+            Set<String> f=new HashSet<>(preferences.getStringSet("favorites",Collections.emptySet()));
+            boolean added=f.add(a.pkg);if(!added)f.remove(a.pkg);
+            preferences.edit().putStringSet("favorites",f).apply();
+            Toast.makeText(this,added?"В избранном":"Удалено из избранного",Toast.LENGTH_SHORT).show();return true;
+        });
+    }
+    private void refreshApps(){
+        PackageManager pm=getPackageManager();HashMap<String,TvApp> unique=new HashMap<>();
+        for(String category:new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER,Intent.CATEGORY_LAUNCHER}){
+            Intent query=new Intent(Intent.ACTION_MAIN).addCategory(category);
+            for(ResolveInfo info:pm.queryIntentActivities(query,0)){
+                if(info.activityInfo==null)continue;
+                String pkg=info.activityInfo.packageName;
+                if(pkg.equals(getPackageName())||unique.containsKey(pkg))continue;
+                try{
+                    Intent i=new Intent(Intent.ACTION_MAIN).addCategory(category)
+                        .setClassName(pkg,info.activityInfo.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    String label=String.valueOf(info.loadLabel(pm));
+                    unique.put(pkg,new TvApp(pkg,label,info.loadIcon(pm),i));
+                }catch(Exception ignored){}
+            }
+        }
+        apps.clear();apps.addAll(unique.values());
+        apps.sort(Comparator.comparing(a->a.label.toLowerCase(Locale.ROOT)));
+    }
+    private List<TvApp> forHome(){
+        ArrayList<TvApp> list=new ArrayList<>(apps);
+        Set<String> favorites=preferences.getStringSet("favorites",Collections.emptySet());
+        list.sort((a,b)->{
+            int x=rank(a,favorites),y=rank(b,favorites);
+            return x!=y?Integer.compare(x,y):a.label.compareToIgnoreCase(b.label);
+        });return list;
+    }
+    private int rank(TvApp a,Set<String> fav){
+        if(fav.contains(a.pkg))return -100;
+        String s=a.label.toLowerCase(Locale.ROOT);
+        if(s.contains("youtube"))return 0;
+        if(s.contains("кино"))return 1;
+        if(s.contains("okko")||s.contains("окко"))return 2;
+        if(s.contains("иви")||s.contains("ivi"))return 3;
+        if(s.contains("wink"))return 4;
+        if(s.contains("v2ray"))return 5;
+        if(s.contains("видео"))return 6;
+        return 30;
+    }
+    private TvApp youtubeApp(){
+        for(TvApp a:apps)if(isYouTube(a))return a;
+        return null;
+    }
+    private boolean isYouTube(TvApp a){
+        return a.pkg.equals("com.google.android.youtube.tv")||a.label.equalsIgnoreCase("youtube");
+    }
+    private void launchYouTube(){
+        TvApp a=youtubeApp();
+        if(a==null){Toast.makeText(this,"YouTube не найден",Toast.LENGTH_SHORT).show();return;}
+        if(preferences.getBoolean("youtube_vpn",true)&&!vpnConnected()){
+            pendingYouTube=true;
+            Toast.makeText(this,"Сначала подключите VPN в v2RayTun, затем вернитесь назад",Toast.LENGTH_LONG).show();
+            openVpn();return;
+        }
+        pendingYouTube=false;openDirect(a);
+    }
+    private void openVpn(){
+        for(TvApp a:apps)if(a.pkg.equals("com.v2raytun.android")||
+            a.label.toLowerCase(Locale.ROOT).contains("v2raytun")){openDirect(a);return;}
+        Toast.makeText(this,"Установите v2RayTun",Toast.LENGTH_LONG).show();
+    }
+    private void openDirect(TvApp a){
+        try{startActivity(a.intent);}
+        catch(Exception e){Toast.makeText(this,"Не удаётся открыть "+a.label,Toast.LENGTH_LONG).show();}
+    }
+    private void trySettings(String action){
+        try{startActivity(new Intent(action));}
+        catch(Exception e){try{startActivity(new Intent(Settings.ACTION_SETTINGS));}
+        catch(Exception ignored){Toast.makeText(this,"Настройки недоступны",Toast.LENGTH_SHORT).show();}}
+    }
+    private boolean vpnConnected(){
+        try{
+            ConnectivityManager manager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+            if(manager==null)return false;
+            for(Network n:manager.getAllNetworks()){
+                NetworkCapabilities c=manager.getNetworkCapabilities(n);
+                if(c!=null&&c.hasTransport(NetworkCapabilities.TRANSPORT_VPN))return true;
+            }
+        }catch(Exception ignored){}
+        return false;
+    }
+    private String freeSpace(){
+        try{StatFs s=new StatFs(getFilesDir().getPath());
+            return String.format(Locale.getDefault(),"%.1f ГБ свободно",s.getAvailableBytes()/1073741824.0);}
+        catch(Exception e){return "Недоступно";}
+    }
+}
