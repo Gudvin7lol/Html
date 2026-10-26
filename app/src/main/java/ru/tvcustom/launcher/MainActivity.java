@@ -544,22 +544,59 @@ public final class MainActivity extends Activity {
             c.addView(r,new LinearLayout.LayoutParams(-1,dp(137)));
         }
     }
+    private int cardColor(TvApp a){
+        String p=a.label.toLowerCase(Locale.ROOT);
+        if(p.contains("youtube"))return 0xFFF0F2F6;
+        if(p.contains("okko")||p.contains("окко"))return 0xFF2F2256;
+        if(p.contains("wink"))return 0xFF883718;
+        if(p.contains("иви")||p.equals("ivi"))return 0xFF822445;
+        if(p.contains("кино"))return 0xFF30261E;
+        if(p.contains("v2ray"))return 0xFF203B57;
+        if(p.contains("vk")||p.contains("видео"))return 0xFF164681;
+        return SURFACE;
+    }
     private void tile(LinearLayout r,TvApp a){
-        LinearLayout b=col();b.setGravity(Gravity.CENTER);b.setPadding(dp(9),dp(10),dp(9),dp(8));
-        selectable(b,SURFACE);
-        ImageView i=new ImageView(this);i.setImageDrawable(a.icon);i.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        b.addView(i,new LinearLayout.LayoutParams(dp(52),dp(52)));gap(b,7);
-        TextView label=text(a.label,12,WHITE,true);
-        label.setGravity(Gravity.CENTER);label.setMaxLines(1);label.setEllipsize(TextUtils.TruncateAt.END);
-        b.addView(label,new LinearLayout.LayoutParams(-1,dp(27)));
+        FrameLayout tile=new FrameLayout(this);
+        int base=cardColor(a);
+        tile.setClipToOutline(true);
+        selectable(tile,base);
+        if(a.banner!=null){
+            ImageView banner=new ImageView(this);
+            banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            banner.setImageDrawable(a.banner);
+            tile.addView(banner,new FrameLayout.LayoutParams(-1,-1));
+            View tint=new View(this);
+            tint.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x330B101A,0xD5080C13}));
+            tile.addView(tint,new FrameLayout.LayoutParams(-1,-1));
+        }else{
+            ImageView icon=new ImageView(this);
+            icon.setImageDrawable(a.icon);
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(64),dp(62),Gravity.CENTER);
+            ip.bottomMargin=dp(15);
+            tile.addView(icon,ip);
+        }
+        boolean light=base==0xFFF0F2F6 && a.banner==null;
+        TextView name=text(a.label,12,light?0xFF18202A:WHITE,true);
+        name.setGravity(Gravity.CENTER);name.setMaxLines(1);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        FrameLayout.LayoutParams titleParams=new FrameLayout.LayoutParams(-1,dp(28),Gravity.BOTTOM);
+        titleParams.leftMargin=dp(7);titleParams.rightMargin=dp(7);
+        titleParams.bottomMargin=dp(5);
+        tile.addView(name,titleParams);
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(116));
-        lp.setMargins(dp(2),0,dp(9),0);r.addView(b,lp);
-        b.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
-        b.setOnLongClickListener(v->{
-            Set<String> f=new HashSet<>(preferences.getStringSet("favorites",Collections.emptySet()));
-            boolean added=f.add(a.pkg);if(!added)f.remove(a.pkg);
-            preferences.edit().putStringSet("favorites",f).apply();
-            Toast.makeText(this,added?"В избранном":"Удалено из избранного",Toast.LENGTH_SHORT).show();return true;
+        lp.setMargins(dp(3),0,dp(9),0);
+        r.addView(tile,lp);
+        tile.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
+        tile.setOnLongClickListener(v->{
+            Set<String> favorites=new HashSet<>(
+                preferences.getStringSet("favorites",Collections.emptySet()));
+            boolean added=favorites.add(a.pkg);
+            if(!added)favorites.remove(a.pkg);
+            preferences.edit().putStringSet("favorites",favorites).apply();
+            Toast.makeText(this,added?"Добавлено в избранное":"Убрано из избранного",Toast.LENGTH_SHORT).show();
+            return true;
         });
     }
     private void refreshApps(){
