@@ -1,25 +1,29 @@
-# Xiaomi TV Custom — installable Android TV launcher v1.0
+# Xiaomi TV Custom — v1.1
 
-**Target:** Xiaomi MiTV-MOOQ1, Android TV 11. This project is completely separate from Zamer's application files. Built on branch xiaomi-tv-custom-build.
+### Target
+Xiaomi MiTV-MOOQ1 · Android TV 11.
 
-## Included
-- Graphite + peach theme, locally rendered cinematic mountain wallpaper; no remote media/downloads.
-- Android TV launcher / Home intents. Whether HOME is replaceable depends on Xiaomi firmware.
-- Full remote D-pad interaction: six sections, Android apps, favorites via long-OK, shortcuts, settings, HDMI settings entry.
-- Installed apps are discovered locally. YouTube, Kinopoisk, Ivi, Okko etc. appear if installed.
-- VPN status based on Android VPN network state; v2RayTun launcher shortcut.
-- YouTube VPN **check-and-handoff**: if disconnected, opens v2RayTun to connect, launches YouTube after returning with VPN active. This is *not* an automatic VPN toggle and requires user interaction.
+This branch contains a standalone Android TV HOME/Leanback launcher, separate from the main repository code and the Zamer application.
 
-## Excluded
-- Direct VPN start/stop with no interaction (no verified exported API).
-- Streaming provider watch history/film metadata, privileged HDMI switch, privileged overlay.
-- User telemetry, ads, forced removal/disable of system packages.
+## Interface
+- Original graphite/peach design. Offline cinematic mountain wallpaper and cinematic hero panel.
+- Responsive D-pad app grids, categories, favourites (hold OK), app search and installed-app discovery.
+- Home, Movies & TV, Applications, HDMI, Smart VPN, Settings, and a Control Centre via remote MENU key.
+- Local Wi-Fi status, free storage display, time, live VPN network indicator; links to actual Android settings.
+
+## VPN
+- v2RayTun can be opened directly.
+- Optional check before YouTube. If Android reports no VPN, launcher opens v2RayTun for the user to connect. Upon return with a VPN established, it opens YouTube.
+- No unverified one-tap VPN toggle; no automatic disconnect; no secret/background control of other apps.
+
+## Safety/compatibility
+- No root, Accessibility Service, invasive debloating or disabling stock Xiaomi launcher.
+- Some proprietary HDMI selectors and automatic HOME replacement may not work on Xiaomi firmware.
+- Streaming-provider continue-watching/movie poster APIs are intentionally excluded until legal supported integrations exist.
+- Keep Projectivy as rollback until TV tested.
+- Uses lightweight Android native Java views and vector artwork. No runtime network image loading or video wallpapers.
 
 ## Build
-Push branch xiaomi-tv-custom-build to GitHub; Actions builds using Gradle 8.7 and Android SDK 35. Download artifact XiaomiTVCustom-1.0.0-apk, extract app-debug.apk. APK has DEBUG signature, which is suitable for sideload tests but not final distribution. Device testing is required before claiming complete release readiness.
+In branch xiaomi-tv-custom-build, GitHub Actions workflow \`tv-apk.yml\` builds an installable debug-signed APK with JDK 17, Gradle 8.7, Android SDK 35. Debug signature is for personal sideload testing. Use Android Studio/real Xiaomi TV to validate runtime navigation and compatibility.
 
-## TV installation
-1. Keep Projectivy and Xiaomi stock launcher installed as fallback.
-2. Transfer app-debug.apk to TV and install (allow unknown apps for the file manager).
-3. Open Xiaomi TV Custom from Apps. Do not disable Xiaomi home until new launcher confirmed.
-4. Test Back/Home/D-pad, YouTube, VPN handoff, media apps, and display resolution.
+**Note:** A successful compilation is not proof the launcher works on this exact TV. Installation testing remains necessary.
