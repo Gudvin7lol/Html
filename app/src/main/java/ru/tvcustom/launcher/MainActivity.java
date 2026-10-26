@@ -27,6 +27,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
+import android.content.pm.ApplicationInfo;
 import java.util.*;
 import java.text.SimpleDateFormat;
 
@@ -46,6 +48,8 @@ public final class MainActivity extends Activity {
     private int page=0;
     private boolean pendingYouTube=false;
     private boolean initialFocus=true;
+    private String appFilter="all";
+    private String searchQuery="";
 
     static class TvApp {
         String pkg,label; Drawable icon; Intent intent;
@@ -86,8 +90,12 @@ public final class MainActivity extends Activity {
         }
     }
     @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
-        if(keyCode==KeyEvent.KEYCODE_MENU) { switchTo(5); return true; }
+        if(keyCode==KeyEvent.KEYCODE_MENU || keyCode==KeyEvent.KEYCODE_SETTINGS) { switchTo(6); return true; }
         return super.onKeyDown(keyCode,e);
+    }
+    @Override public void onBackPressed() {
+        if(page!=0) { switchTo(0); return; }
+        super.onBackPressed();
     }
     private int dp(float v){return (int)(getResources().getDisplayMetrics().density*v+0.5f);}
     private LinearLayout col(){ LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l; }
@@ -129,9 +137,9 @@ public final class MainActivity extends Activity {
         statusVpn.setGravity(Gravity.CENTER);selectable(statusVpn,SURFACE);
         statusVpn.setOnClickListener(v->switchTo(4));
         top.addView(statusVpn,new LinearLayout.LayoutParams(dp(102),dp(45)));
-        TextView gear=text("⚙",28,ACCENT,true);
+        TextView gear=text("☷",27,ACCENT,true);
         gear.setGravity(Gravity.CENTER);selectable(gear,SURFACE);
-        gear.setOnClickListener(v->switchTo(5));top.addView(gear,new LinearLayout.LayoutParams(dp(54),dp(45)));
+        gear.setOnClickListener(v->switchTo(6));top.addView(gear,new LinearLayout.LayoutParams(dp(54),dp(45)));
         base.addView(top,new LinearLayout.LayoutParams(-1,dp(58)));
 
         LinearLayout main=row();main.setGravity(Gravity.TOP);
@@ -169,6 +177,7 @@ public final class MainActivity extends Activity {
           case 3: hdmi(c);break;
           case 4: vpnPage(c);break;
           case 5: settings(c);break;
+          case 6: controlCenter(c);break;
           default:home(c);break;
         }
     }
@@ -178,30 +187,55 @@ public final class MainActivity extends Activity {
         gap(parent,16);
     }
     private void home(LinearLayout c){
-        LinearLayout hero=col();
-        hero.setPadding(dp(27),dp(21),dp(22),dp(15));
-        hero.setBackground(bg(0x95212935,false,18));
-        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(184)));
-        hero.addView(text("ТВОЙ ДОМАШНИЙ КИНОТЕАТР",13,ACCENT,true));gap(hero,9);
-        hero.addView(text("Всё для просмотра",31,WHITE,true));gap(hero,5);
-        hero.addView(text("Фильмы, сериалы и приложения. Без рекламы и лишних меню.",14,MUTED,false));
-        gap(hero,18);
+        FrameLayout hero=new FrameLayout(this);
+        hero.setBackground(bg(0xCC202631,false,20));
+        hero.setClipToOutline(true);
+        HeroScene art=new HeroScene(this);
+        hero.addView(art,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout content=col();
+        content.setPadding(dp(23),dp(18),dp(18),dp(14));
+        hero.addView(content,new FrameLayout.LayoutParams(-1,-1));
+        TextView kicker=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",11,ACCENT,true);
+        kicker.setLetterSpacing(0.09f);
+        content.addView(kicker);gap(content,9);
+        TextView slogan=text("Твой экран.\nТвои правила.",29,WHITE,true);
+        slogan.setLineSpacing(dp(0),1f);
+        content.addView(slogan);gap(content,7);
+        content.addView(text("Без рекламы в меню. Всё нужное под рукой.",13,0xFFD1D6DE,false));
+        gap(content,14);
         LinearLayout actions=row();
-        pill(actions,"▶  YouTube",()->launchYouTube());
-        pill(actions,"◇  VPN",this::openVpn);
-        pill(actions,"▦  Все приложения",()->switchTo(2));
-        hero.addView(actions);
-        gap(c,21);c.addView(text("Избранные приложения",20,WHITE,true));gap(c,10);
-        appStrip(c,forHome(),10);
-        gap(c,16);c.addView(text("Быстрый доступ",20,WHITE,true));gap(c,11);
+        pill(actions,"▶  YouTube + VPN",this::launchYouTube);
+        pill(actions,"◇  Smart VPN",this::openVpn);
+        content.addView(actions);
+        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(225)));
+        gap(c,21);
+        sectionHead(c,"Избранные приложения","Долгое нажатие ОК добавляет программу в избранное",()->switchTo(2));
+        appStrip(c,forHome(),9);
+        gap(c,13);
+        sectionHead(c,"Быстрые действия","Кнопка MENU на пульте открывает центр управления",()->switchTo(6));
         LinearLayout quick=row();
-        quickTile(quick,"VPN","v2RayTun",this::openVpn);
-        quickTile(quick,"HDMI","Входы телевизора",()->switchTo(3));
-        quickTile(quick,"Память",freeSpace(),()->switchTo(5));
+        quickTile(quick,"◆  VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
+        quickTile(quick,"▣  Приложения",apps.size()+" установлено",()->switchTo(2));
+        quickTile(quick,"▭  HDMI","Системные входы",()->switchTo(3));
         c.addView(quick);
+        gap(c,16);
+        c.addView(text("XIAOMI TV CUSTOM  ·  v1.1",11,0xFF8E9AAB,false));
+    }
+    private void sectionHead(LinearLayout c,String title,String subtitle,Runnable action){
+        LinearLayout header=row();
+        LinearLayout left=col();
+        left.addView(text(title,20,WHITE,true));
+        left.addView(text(subtitle,12,MUTED,false));
+        header.addView(left,new LinearLayout.LayoutParams(0,dp(51),1));
+        TextView viewAll=text("Все   ›",14,ACCENT,true);
+        viewAll.setGravity(Gravity.CENTER);
+        selectable(viewAll,0x7A202631);
+        viewAll.setOnClickListener(v->action.run());
+        header.addView(viewAll,new LinearLayout.LayoutParams(dp(78),dp(39)));
+        c.addView(header);gap(c,7);
     }
     private void streaming(LinearLayout c){
-        title(c,"Кино и ТВ","Твои видеосервисы, без навязанных рекомендаций.");
+        title(c,"Кино и ТВ","Твои приложения для просмотра. Никакой рекламной ленты.");
         ArrayList<TvApp> stream=new ArrayList<>();
         for(TvApp a:apps){
             String x=a.label.toLowerCase(Locale.ROOT);
@@ -210,12 +244,67 @@ public final class MainActivity extends Activity {
                x.contains("zona")||x.contains("зона")||x.contains("netflix")||x.contains("tv+")||
                x.contains("live tv"))stream.add(a);
         }
+        stream.sort(Comparator.comparingInt(a->rank(a,preferences.getStringSet("favorites",Collections.emptySet()))));
         if(stream.isEmpty())c.addView(text("Видеоприложения не обнаружены.",16,MUTED,false));
         else appGrid(c,stream);
     }
     private void allApps(LinearLayout c){
-        title(c,"Все приложения","Долгое нажатие ОК: добавить или убрать из избранного.");
-        appGrid(c,apps);
+        title(c,"Все приложения",apps.size()+" программ · ОК запускает · удержание ОК добавляет в избранное");
+        LinearLayout filters=row();
+        String[] labels={"Все","Избранное","Кино и ТВ","Системные","Поиск"};
+        String[] ids={"all","fav","media","system","search"};
+        for(int i=0;i<labels.length;i++){
+            final String id=ids[i];
+            TextView t=text(labels[i],13,id.equals(appFilter)?0xFF101319:WHITE,true);
+            t.setGravity(Gravity.CENTER);t.setPadding(dp(10),0,dp(10),0);
+            selectable(t,id.equals(appFilter)?ACCENT:SURFACE);
+            t.setOnClickListener(v->{
+                if(id.equals("search")){showSearch();return;}
+                appFilter=id;render(2);
+            });
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(42));
+            lp.setMargins(0,0,dp(8),0);filters.addView(t,lp);
+        }
+        HorizontalScrollView filterScroll=new HorizontalScrollView(this);
+        filterScroll.setHorizontalScrollBarEnabled(false);
+        filterScroll.addView(filters);c.addView(filterScroll);gap(c,19);
+        ArrayList<TvApp> visible=new ArrayList<>();
+        Set<String> favorites=preferences.getStringSet("favorites",Collections.emptySet());
+        for(TvApp a:apps){
+            if(appFilter.equals("fav")&&!favorites.contains(a.pkg))continue;
+            if(appFilter.equals("media")&&!isMedia(a))continue;
+            if(appFilter.equals("system")&&!isSystem(a))continue;
+            if(!searchQuery.isEmpty()&&!a.label.toLowerCase(Locale.ROOT).contains(searchQuery.toLowerCase(Locale.ROOT)))continue;
+            visible.add(a);
+        }
+        if(!searchQuery.isEmpty()){
+            c.addView(text("Поиск: "+searchQuery,14,ACCENT,true));gap(c,12);
+        }
+        if(visible.isEmpty())c.addView(text("Здесь пока нет приложений. Выбери другую категорию.",16,MUTED,false));
+        else appGrid(c,visible);
+    }
+    private boolean isMedia(TvApp a){
+        String n=a.label.toLowerCase(Locale.ROOT);
+        return n.contains("youtube")||n.contains("кино")||n.contains("ivi")||n.contains("иви")||
+            n.contains("okko")||n.contains("окко")||n.contains("wink")||n.contains("видео")||
+            n.contains("zona")||n.contains("зона")||n.contains("tv")||n.contains("netflix");
+    }
+    private boolean isSystem(TvApp a){
+        try{
+            ApplicationInfo info=getPackageManager().getApplicationInfo(a.pkg,0);
+            return (info.flags&ApplicationInfo.FLAG_SYSTEM)!=0;
+        }catch(Exception ignored){return false;}
+    }
+    private void showSearch(){
+        EditText edit=new EditText(this);
+        edit.setSingleLine(true);edit.setText(searchQuery);
+        edit.setHint("Название приложения");
+        new AlertDialog.Builder(this).setTitle("Поиск приложений")
+            .setView(edit)
+            .setNegativeButton("Отмена",null)
+            .setNeutralButton("Сбросить",(d,w)->{searchQuery="";render(2);})
+            .setPositiveButton("Найти",(d,w)->{searchQuery=edit.getText().toString().trim();appFilter="all";render(2);})
+            .show();
     }
     private void hdmi(LinearLayout c){
         title(c,"Подключения","Быстрый переход к настройкам входов телевизора.");
@@ -305,10 +394,24 @@ public final class MainActivity extends Activity {
         if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
         scroll.addView(r);c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(139)));
     }
+    private int tileWidth(){
+        float width=getResources().getDisplayMetrics().widthPixels/
+                getResources().getDisplayMetrics().density;
+        int available=(int)width-64-194-44;
+        int cols=Math.max(2,Math.min(5,available/165));
+        return Math.max(120,Math.min(180,(available-12)/cols-11));
+    }
+    private int columns(){
+        float width=getResources().getDisplayMetrics().widthPixels/
+                getResources().getDisplayMetrics().density;
+        return Math.max(2,Math.min(5,((int)width-64-194-44)/165));
+    }
     private void appGrid(LinearLayout c,List<TvApp> list){
-        for(int i=0;i<list.size();i+=5){
-            LinearLayout r=row();r.setClipChildren(false);r.setPadding(dp(5),dp(5),dp(5),dp(6));
-            for(int j=i;j<Math.min(list.size(),i+5);j++)tile(r,list.get(j));
+        int cols=columns();
+        for(int i=0;i<list.size();i+=cols){
+            LinearLayout r=row();r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setClipChildren(false);r.setPadding(dp(3),dp(4),dp(3),dp(7));
+            for(int j=i;j<Math.min(list.size(),i+cols);j++)tile(r,list.get(j));
             c.addView(r,new LinearLayout.LayoutParams(-1,dp(137)));
         }
     }
@@ -320,8 +423,8 @@ public final class MainActivity extends Activity {
         TextView label=text(a.label,12,WHITE,true);
         label.setGravity(Gravity.CENTER);label.setMaxLines(1);label.setEllipsize(TextUtils.TruncateAt.END);
         b.addView(label,new LinearLayout.LayoutParams(-1,dp(27)));
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(143),dp(116));
-        lp.setMargins(dp(4),0,dp(11),0);r.addView(b,lp);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(116));
+        lp.setMargins(dp(2),0,dp(9),0);r.addView(b,lp);
         b.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
         b.setOnLongClickListener(v->{
             Set<String> f=new HashSet<>(preferences.getStringSet("favorites",Collections.emptySet()));
