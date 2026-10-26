@@ -611,7 +611,7 @@ public final class MainActivity extends Activity {
                     Intent i=new Intent(Intent.ACTION_MAIN).addCategory(category)
                         .setClassName(pkg,info.activityInfo.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     String label=String.valueOf(info.loadLabel(pm));
-                    unique.put(pkg,new TvApp(pkg,label,info.loadIcon(pm),info.loadBanner(pm),i));
+                    unique.put(pkg,new TvApp(pkg,label,info.loadIcon(pm),info.activityInfo.loadBanner(pm),i));
                 }catch(Exception ignored){}
             }
         }
