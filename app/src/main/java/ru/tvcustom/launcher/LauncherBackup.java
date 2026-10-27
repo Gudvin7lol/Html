@@ -40,6 +40,8 @@ public final class LauncherBackup {
         options.put("motion",p.getBoolean("motion",true));
         options.put("scenic",p.getBoolean("scenic",true));
         options.put("youtube_vpn",p.getBoolean("youtube_vpn",true));
+        options.put("large_cards",p.getBoolean("large_cards",true));
+        options.put("show_recent",p.getBoolean("show_recent",true));
         output.put("options",options);
         // SAF URI permission doesn't migrate across installs, so poster_uri is not backed up.
         return output.toString(2);
@@ -70,6 +72,8 @@ public final class LauncherBackup {
         boolean motion=options.optBoolean("motion",true);
         boolean scenic=options.optBoolean("scenic",true);
         boolean vpn=options.optBoolean("youtube_vpn",true);
+        boolean large=options.optBoolean("large_cards",true);
+        boolean recentEnabled=options.optBoolean("show_recent",true);
         p.edit()
           .putString("favorite_order",android.text.TextUtils.join(",",ids))
           .putString("recent_apps",android.text.TextUtils.join(",",recent))
@@ -77,6 +81,8 @@ public final class LauncherBackup {
           .putBoolean("motion",motion)
           .putBoolean("scenic",scenic)
           .putBoolean("youtube_vpn",vpn)
+          .putBoolean("large_cards",large)
+          .putBoolean("show_recent",recentEnabled)
           .apply();
         return ids.size();
     }
