@@ -53,6 +53,7 @@ public final class MainActivity extends Activity {
     };
     private int page=0;
     private boolean pendingYouTube=false;
+    private long vpnRequestAt=0;
     private String appFilter="all";
     private String searchQuery="";
     private String selectedPackage="";
@@ -79,10 +80,13 @@ public final class MainActivity extends Activity {
         if(panel==null)return;
         // Returning from a video player should not reset focus/scroll on every resume.
         refreshApps();
-        if(pendingYouTube && vpnConnected()){
+        if(pendingYouTube){
+            boolean isFresh=android.os.SystemClock.elapsedRealtime()-vpnRequestAt<120000;
             pendingYouTube=false;
-            TvApp target=youtubeApp();
-            if(target!=null){openDirect(target);return;}
+            if(isFresh && vpnConnected()){
+                TvApp target=youtubeApp();
+                if(target!=null){openDirect(target);return;}
+            }
         }
         if(knownAppCount!=apps.size()){
             knownAppCount=apps.size();
@@ -178,7 +182,7 @@ public final class MainActivity extends Activity {
             item.setPadding(dp(14),0,dp(6),0);
             selectable(item,0xBF17212E);
             item.setOnFocusChangeListener((v,focused)->{
-                v.setBackground(glass(i==page?0xE43C3136:0xA117202D,focused || i==page,13));
+                v.setBackground(glass(destination==page?0xE43C3136:0xA117202D,focused || destination==page,13));
             });
             TvIcon icon=new TvIcon(this,i,ACCENT);
             LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));
@@ -200,6 +204,7 @@ public final class MainActivity extends Activity {
         nav.get(0).requestFocus();
     }
     private void switchTo(int to){
+        pendingYouTube=false;
         page=to;
         render(to);
         if(to<nav.size())nav.get(to).requestFocus();
@@ -535,6 +540,8 @@ public final class MainActivity extends Activity {
         action(c,"Состояние памяти",freeSpace()+" · нажми для настроек хранилища",
                ()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
         action(c,"Wi-Fi и Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        action(c,"Выбор главного экрана","Вернуться к Xiaomi или Projectivy можно через настройки",
+                ()->trySettings(Settings.ACTION_HOME_SETTINGS));
         action(c,"Настройки Android TV","Оригинальное меню Xiaomi",
                 ()->trySettings(Settings.ACTION_SETTINGS));
         action(c,"Сбросить порядок избранного","Не удаляет установленные приложения",()->{
@@ -792,7 +799,8 @@ public final class MainActivity extends Activity {
         if(a==null){Toast.makeText(this,"YouTube не найден",Toast.LENGTH_SHORT).show();return;}
         if(preferences.getBoolean("youtube_vpn",true)&&!vpnConnected()){
             pendingYouTube=true;
-            Toast.makeText(this,"Сначала подключите VPN в v2RayTun, затем вернитесь назад",Toast.LENGTH_LONG).show();
+            vpnRequestAt=android.os.SystemClock.elapsedRealtime();
+            Toast.makeText(this,"Подключите VPN в v2RayTun и вернитесь кнопкой Назад",Toast.LENGTH_LONG).show();
             openVpn();return;
         }
         pendingYouTube=false;openDirect(a);
@@ -803,7 +811,7 @@ public final class MainActivity extends Activity {
         Toast.makeText(this,"Установите v2RayTun",Toast.LENGTH_LONG).show();
     }
     private void openDirect(TvApp a){
-        try{rememberApp(a);startActivity(a.intent);}
+        try{startActivity(a.intent);rememberApp(a);}
         catch(Exception e){Toast.makeText(this,"Не удаётся открыть "+a.label,Toast.LENGTH_LONG).show();}
     }
     private void trySettings(String action){
