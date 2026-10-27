@@ -3,6 +3,9 @@ on:
   push:
     branches: [xiaomi-tv-custom-build]
   workflow_dispatch:
+concurrency:
+  group: tv-screenshot-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   screenshot:
     runs-on: ubuntu-latest
