@@ -100,3 +100,10 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 
 ## Screenshot-driven layout fix 1.10.2
 Actual GitHub Actions Android emulator screenshot of 1.10.1 at 1080x640 pixels revealed overlarge home app tiles and cut-off quick access controls. v1.10.2 uses compact 90dp-high tiles on the home screen only, a narrower 36%-screen-height hero, tighter section headers and paddings. The full-size grid remains available on the Apps page. Default cinematic hero is now 1024x344 instead of 480x191. A separate emulator workflow takes screenshots of the actual Android activity; compilation success alone is not UI QA.
+
+## Version 1.11.0: approved-concept split home
+- A real two-column home screen on >=980dp Android TVs: cinematic featured artwork at left; installed applications in a three-column, three-row glass dock at right. Compact-screen fallback retains single banner.
+- Hero has two genuine actions (launch last media app or choose Apps), no fake Dune play controls.
+- Dock items show real installed app icons/banners and open those packages with the remote; long OK still manages favourites.
+- Below the stage: 90dp-high favourites rail and compact functional quick controls; recent apps only represent actual launcher launches.
+- UI screenshots now capture home, menu overlay, and app navigation through an Android emulator; no unsupported promises of actual movie continuation or v2RayTun automated connection.
