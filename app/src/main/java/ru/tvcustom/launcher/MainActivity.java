@@ -41,7 +41,7 @@ public final class MainActivity extends Activity {
     private static final int SURFACE=0xE8202631, SURFACE2=0xF1222C39;
     private static final int PANEL_BORDER=0x5B5B6577;
     private final ArrayList<TvApp> apps=new ArrayList<>();
-    private final ArrayList<TextView> nav=new ArrayList<>();
+    private final ArrayList<View> nav=new ArrayList<>();
     private SharedPreferences preferences;
     private FrameLayout panel;
     private SceneView background;
@@ -167,14 +167,20 @@ public final class MainActivity extends Activity {
         LinearLayout side=col();side.setPadding(0,dp(16),dp(12),0);
         main.addView(side,new LinearLayout.LayoutParams(dp(174),-1));
         String[] pages={"Главная","Фильмы и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
-        String[] icons={"⌂","▣","▦","▭","◇","⚙"};
         for(int i=0;i<pages.length;i++){
-            final int n=i;
-            TextView item=text(icons[i]+"    "+pages[i],15,WHITE,i==0);
-            item.setPadding(dp(11),0,dp(4),0);selectable(item,0x84202631);
-            item.setOnClickListener(v->switchTo(n));
+            final int destination=i;
+            LinearLayout item=row();item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setPadding(dp(14),0,dp(6),0);
+            selectable(item,0xBF17212E);
+            TvIcon icon=new TvIcon(this,i,ACCENT);
+            LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));
+            iconSize.rightMargin=dp(13);
+            item.addView(icon,iconSize);
+            TextView label=text(pages[i],15,WHITE,i==0);
+            item.addView(label,new LinearLayout.LayoutParams(0,-1,1f));
+            item.setOnClickListener(v->switchTo(destination));
             side.addView(item,new LinearLayout.LayoutParams(-1,dp(46)));
-            gap(side,6);nav.add(item);
+            gap(side,7);nav.add(item);
         }
         gap(side,16);
         side.addView(text("MI TV  ·  ANDROID 11",10,0xFF8798AB,false));
@@ -236,8 +242,8 @@ public final class MainActivity extends Activity {
         overlay.addView(text("Фильмы, сериалы и любимые приложения.\nВсё под рукой, без рекламы в меню.",14,0xFFD5DBE5,false));
         gap(overlay,15);
         LinearLayout buttons=row();
-        pill(buttons,"▶  Смотреть",this::openBestVideo);
-        pill(buttons,"◇  Smart VPN",this::openVpn);
+        pill(buttons,"Смотреть",this::openBestVideo);
+        pill(buttons,"Smart VPN",this::openVpn);
         overlay.addView(buttons);
 
         int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
@@ -256,9 +262,9 @@ public final class MainActivity extends Activity {
         }else{
             sectionHead(c,"Быстрые настройки","Сеть, VPN и переход к другим источникам",()->switchTo(6));
             LinearLayout quick=row();
-            quickTile(quick,"◆  Smart VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
-            quickTile(quick,"◉  Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
-            quickTile(quick,"▭  HDMI","Открыть настройки",()->switchTo(3));
+            quickTile(quick,"Smart VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
+            quickTile(quick,"Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+            quickTile(quick,"HDMI","Открыть настройки",()->switchTo(3));
             c.addView(quick);
         }
     }
@@ -439,9 +445,9 @@ public final class MainActivity extends Activity {
     private void controlCenter(LinearLayout c){
         title(c,"Центр управления","Быстрые команды с пульта · меню открывается кнопкой MENU");
         LinearLayout status=row();
-        quickTile(status,"◆  VPN",vpnConnected()?"Подключён":"Нет подключения",this::openVpn);
-        quickTile(status,"◉  Сеть",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
-        quickTile(status,"▣  Хранилище",freeSpace(),()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
+        quickTile(status,"VPN",vpnConnected()?"Подключён":"Нет подключения",this::openVpn);
+        quickTile(status,"Сеть",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        quickTile(status,"Хранилище",freeSpace(),()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
         c.addView(status);gap(c,16);
         c.addView(text("Быстрые настройки",19,WHITE,true));gap(c,12);
         LinearLayout r1=row();
