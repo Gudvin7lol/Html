@@ -932,7 +932,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.7 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.10 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
