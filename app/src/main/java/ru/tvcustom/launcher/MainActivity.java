@@ -297,7 +297,7 @@ public final class MainActivity extends Activity {
         appStrip(c,pinned?favoriteApps():forHome(),10);
         gap(c,12);
         ArrayList<TvApp> recent=recentApps();
-        if(!recent.isEmpty()){
+        if(!recent.isEmpty() && preferences.getBoolean("show_recent",true)){
             sectionHead(c,"Недавно открывали","История запуска с этого лаунчера",()->switchTo(2));
             appStrip(c,recent,7);
         }else{
@@ -603,6 +603,8 @@ public final class MainActivity extends Activity {
         });
         setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
         setting(c,"Плавные переходы","Лёгкое увеличение активной карточки","motion",true);
+        setting(c,"Крупные карточки","Большие приложения и упрощённая сетка","large_cards",true);
+        setting(c,"История на главном экране","Недавно открытые приложения под избранным","show_recent",true);
         gap(c,16);
         c.addView(text("СЦЕНАРИИ",12,ACCENT,true));gap(c,9);
         setting(c,"VPN перед YouTube","Открывать v2RayTun при отсутствии соединения","youtube_vpn",true);
@@ -697,34 +699,39 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(83),1);
         lp.setMargins(0,0,dp(9),0);into.addView(card,lp);
     }
-    private void appStrip(LinearLayout c,List<TvApp> list,int max){
-        HorizontalScrollView scroll=new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(false);scroll.setClipToPadding(false);
-        scroll.setClipChildren(false);
-        LinearLayout r=row();r.setPadding(dp(5),dp(5),dp(8),dp(5));r.setClipChildren(false);
-        for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i));
-        if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
-        scroll.addView(r);c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(134)));
+    private int tileHeight(){
+        return preferences.getBoolean("large_cards",true)?128:105;
+    }
+    private int columns(){
+        float width=getResources().getDisplayMetrics().widthPixels/
+                getResources().getDisplayMetrics().density;
+        int available=(int)width-44-174-35;
+        int target=preferences.getBoolean("large_cards",true)?205:160;
+        return Math.max(2,Math.min(6,available/target));
     }
     private int tileWidth(){
         float width=getResources().getDisplayMetrics().widthPixels/
                 getResources().getDisplayMetrics().density;
         int available=(int)width-44-174-35;
-        int cols=Math.max(2,Math.min(5,available/165));
-        return Math.max(120,Math.min(180,(available-12)/cols-11));
+        return Math.max(118,Math.min(208,(available-12)/columns()-11));
     }
-    private int columns(){
-        float width=getResources().getDisplayMetrics().widthPixels/
-                getResources().getDisplayMetrics().density;
-        return Math.max(2,Math.min(5,((int)width-44-174-35)/165));
+    private void appStrip(LinearLayout c,List<TvApp> list,int max){
+        HorizontalScrollView scroll=new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setClipToPadding(false);scroll.setClipChildren(false);
+        LinearLayout r=row();r.setPadding(dp(6),dp(6),dp(10),dp(7));r.setClipChildren(false);
+        for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i));
+        if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
+        scroll.addView(r);
+        c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(tileHeight()+18)));
     }
     private void appGrid(LinearLayout c,List<TvApp> list){
         int cols=columns();
         for(int i=0;i<list.size();i+=cols){
             LinearLayout r=row();r.setGravity(Gravity.CENTER_VERTICAL);
-            r.setClipChildren(false);r.setPadding(dp(3),dp(4),dp(3),dp(7));
+            r.setClipChildren(false);r.setPadding(dp(5),dp(5),dp(5),dp(6));
             for(int j=i;j<Math.min(list.size(),i+cols);j++)tile(r,list.get(j));
-            c.addView(r,new LinearLayout.LayoutParams(-1,dp(137)));
+            c.addView(r,new LinearLayout.LayoutParams(-1,dp(tileHeight()+19)));
         }
     }
     private int cardColor(TvApp a){
@@ -756,7 +763,7 @@ public final class MainActivity extends Activity {
             ImageView icon=new ImageView(this);
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(64),dp(62),Gravity.CENTER);
+            FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(preferences.getBoolean("large_cards",true)?74:59),dp(preferences.getBoolean("large_cards",true)?70:57),Gravity.CENTER);
             ip.bottomMargin=dp(12);
             tile.addView(icon,ip);
         }
@@ -768,7 +775,7 @@ public final class MainActivity extends Activity {
         titleParams.leftMargin=dp(7);titleParams.rightMargin=dp(7);
         titleParams.bottomMargin=dp(5);
         tile.addView(name,titleParams);
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(116));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(tileHeight()));
         lp.setMargins(dp(3),0,dp(9),0);
         r.addView(tile,lp);
         tile.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
