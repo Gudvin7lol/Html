@@ -53,3 +53,13 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - Native vector menu icon removes another Android TV font dependency.
 - No root, no privileged HDMI operations, no unattended VPN start/stop.
 - CI builds and checks APK signing, package badging and checksum.
+
+## Version 1.6
+- Long OK: add/remove/reorder favourites, hide/unhide an installed app without uninstalling it.
+- App list has an explicit Hidden filter. Settings can restore all hidden apps; hidden apps are excluded from home, media and recently-opened rows.
+- Foreground peach D-pad focus outline remains visible even on banner-backed app tiles.
+- Selected app filter renders a high-contrast solid peach selection.
+- Hidden apps included in JSON backup; v1.5 backups remain importable.
+- No system apps disabled, no root, no privileged package modifications.
+- CI checks Android package ID, version, debug signature and SHA-256.
+- Note: GitHub runner debug key may rotate; uninstall or later stable signing may be required to upgrade. Export settings before uninstalling.
