@@ -34,7 +34,7 @@ jobs:
           sha256sum "$APK" > APK_SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.4.0-apk
+          name: XiaomiTVCustom-1.5.0-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             APK_SHA256.txt
