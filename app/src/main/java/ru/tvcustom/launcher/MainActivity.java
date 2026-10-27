@@ -1228,11 +1228,11 @@ public final class MainActivity extends Activity {
         HorizontalScrollView scroll=new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setClipToPadding(false);scroll.setClipChildren(false);
-        LinearLayout r=row();r.setPadding(dp(6),dp(6),dp(10),dp(7));r.setClipChildren(false);
+        LinearLayout r=row();r.setPadding(dp(2),dp(2),dp(5),dp(4));r.setClipChildren(false);
         for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i),true);
         if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
         scroll.addView(r);
-        c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(90+14)));
+        c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(72)));
     }
     private void appGrid(LinearLayout c,List<TvApp> list){
         int cols=columns();
@@ -1288,9 +1288,9 @@ public final class MainActivity extends Activity {
             ImageView icon=new ImageView(this);
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int iconDp=compactCard?48:(preferences.getBoolean("large_cards",true)?74:60);
+            int iconDp=compactCard?36:(preferences.getBoolean("large_cards",true)?74:60);
             FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(iconDp),dp(iconDp),Gravity.CENTER);
-            ip.bottomMargin=dp(compactCard?14:19);
+            ip.bottomMargin=dp(compactCard?9:19);
             card.addView(icon,ip);
         }
         // Frosted-looking caption strip. Keep app name legible on both banners and icons.
@@ -1298,7 +1298,7 @@ public final class MainActivity extends Activity {
         labelStrip.setPadding(dp(compactCard?7:10),0,dp(compactCard?5:9),0);
         labelStrip.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
             new int[]{0xC6141A24,0xB018202C}));
-        FrameLayout.LayoutParams stripLp=new FrameLayout.LayoutParams(-1,dp(compactCard?24:31),Gravity.BOTTOM);
+        FrameLayout.LayoutParams stripLp=new FrameLayout.LayoutParams(-1,dp(compactCard?18:31),Gravity.BOTTOM);
         stripLp.leftMargin=dp(1);stripLp.rightMargin=dp(1);stripLp.bottomMargin=dp(1);
         TextView name=text(a.label,compactCard?10:12,WHITE,true);
         name.setSingleLine(true);
@@ -1326,7 +1326,7 @@ public final class MainActivity extends Activity {
             getResources().getDisplayMetrics().density;
         int compactWidth=Math.max(88,Math.min(128,((int)vw-44-174-35-70)/8));
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(
-            dp(compactCard?compactWidth:tileWidth()),dp(compactCard?90:tileHeight()));
+            dp(compactCard?compactWidth:tileWidth()),dp(compactCard?65:tileHeight()));
         lp.setMargins(dp(2),0,dp(compactCard?6:9),0);
         r.addView(card,lp);
         card.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
