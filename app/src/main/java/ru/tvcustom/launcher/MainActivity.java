@@ -228,8 +228,7 @@ public final class MainActivity extends Activity {
         }
         View shade=new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[]{0xF708101C,0xEF0B1320,0x9C101625,0x09000000},
-            new float[]{0f,.29f,.62f,1f}));
+            new int[]{0xF708101C,0xEF0B1320,0x9C101625,0x09000000}));
         hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
 
         LinearLayout overlay=col();
@@ -510,7 +509,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.1 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.3 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
