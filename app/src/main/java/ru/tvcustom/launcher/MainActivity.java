@@ -177,6 +177,9 @@ public final class MainActivity extends Activity {
             LinearLayout item=row();item.setGravity(Gravity.CENTER_VERTICAL);
             item.setPadding(dp(14),0,dp(6),0);
             selectable(item,0xBF17212E);
+            item.setOnFocusChangeListener((v,focused)->{
+                v.setBackground(glass(i==page?0xE43C3136:0xA117202D,focused || i==page,13));
+            });
             TvIcon icon=new TvIcon(this,i,ACCENT);
             LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));
             iconSize.rightMargin=dp(13);
@@ -275,8 +278,10 @@ public final class MainActivity extends Activity {
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
         gap(c,17);
-        sectionHead(c,"Избранные приложения","ОК — открыть   ·   удержание ОК — в избранное",()->switchTo(2));
-        appStrip(c,forHome(),10);
+        boolean pinned=!getFavoriteIds().isEmpty();
+        sectionHead(c,pinned?"Избранное":"Рекомендуемые приложения",
+            "Удержание ОК — настроить избранное",()->switchTo(2));
+        appStrip(c,pinned?favoriteApps():forHome(),10);
         gap(c,12);
         ArrayList<TvApp> recent=recentApps();
         if(!recent.isEmpty()){
@@ -380,7 +385,7 @@ public final class MainActivity extends Activity {
                x.contains("zona")||x.contains("зона")||x.contains("netflix")||x.contains("tv+")||
                x.contains("live tv"))stream.add(a);
         }
-        stream.sort(Comparator.comparingInt(a->rank(a,preferences.getStringSet("favorites",Collections.emptySet()))));
+        stream.sort(Comparator.comparingInt(a->rank(a,new HashSet<>(getFavoriteIds()))));
         if(stream.isEmpty())c.addView(text("Видеоприложения не обнаружены.",16,MUTED,false));
         else appGrid(c,stream);
     }
@@ -396,7 +401,7 @@ public final class MainActivity extends Activity {
             selectable(t,id.equals(appFilter)?ACCENT:SURFACE);
             t.setOnClickListener(v->{
                 if(id.equals("search")){showSearch();return;}
-                appFilter=id;render(2);
+                appFilter=id;searchQuery="";render(2);
             });
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(42));
             lp.setMargins(0,0,dp(8),0);filters.addView(t,lp);
@@ -405,7 +410,7 @@ public final class MainActivity extends Activity {
         filterScroll.setHorizontalScrollBarEnabled(false);
         filterScroll.addView(filters);c.addView(filterScroll);gap(c,19);
         ArrayList<TvApp> visible=new ArrayList<>();
-        Set<String> favorites=preferences.getStringSet("favorites",Collections.emptySet());
+        Set<String> favorites=new HashSet<>(getFavoriteIds());
         for(TvApp a:apps){
             if(appFilter.equals("fav")&&!favorites.contains(a.pkg))continue;
             if(appFilter.equals("media")&&!isMedia(a))continue;
@@ -532,11 +537,11 @@ public final class MainActivity extends Activity {
         action(c,"Wi-Fi и Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
         action(c,"Настройки Android TV","Оригинальное меню Xiaomi",
                 ()->trySettings(Settings.ACTION_SETTINGS));
-        action(c,"Очистить избранное","Не удаляет приложения и их данные",()->{
+        action(c,"Сбросить порядок избранного","Не удаляет установленные приложения",()->{
             new AlertDialog.Builder(this).setTitle("Очистить избранное?")
                 .setMessage("Удалить только отметки избранных программ?")
                 .setNegativeButton("Отмена",null).setPositiveButton("Очистить",(d,w)->{
-                    preferences.edit().remove("favorites").apply();render(5);
+                    preferences.edit().remove("favorites").remove("favorite_order").apply();render(5);
                 }).show();
         });
         gap(c,13);
@@ -684,15 +689,11 @@ public final class MainActivity extends Activity {
         lp.setMargins(dp(3),0,dp(9),0);
         r.addView(tile,lp);
         tile.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
-        tile.setOnLongClickListener(v->{
-            Set<String> favorites=new HashSet<>(
-                preferences.getStringSet("favorites",Collections.emptySet()));
-            boolean added=favorites.add(a.pkg);
-            if(!added)favorites.remove(a.pkg);
-            preferences.edit().putStringSet("favorites",favorites).apply();
-            Toast.makeText(this,added?"Добавлено в избранное":"Убрано из избранного",Toast.LENGTH_SHORT).show();
-            return true;
-        });
+        tile.setOnLongClickListener(v->{editFavorite(a);return true;});
+        if(a.pkg.equals(selectedPackage)){
+            selectedPackage="";
+            tile.post(tile::requestFocus);
+        }
     }
     private void refreshApps(){
         PackageManager pm=getPackageManager();HashMap<String,TvApp> unique=new HashMap<>();
@@ -713,9 +714,55 @@ public final class MainActivity extends Activity {
         apps.clear();apps.addAll(unique.values());
         apps.sort(Comparator.comparing(a->a.label.toLowerCase(Locale.ROOT)));
     }
+    private ArrayList<String> getFavoriteIds(){
+        String order=preferences.getString("favorite_order","");
+        ArrayList<String> result=new ArrayList<>();
+        if(!order.isEmpty())for(String id:order.split(",")){
+            if(!id.isEmpty()&&!result.contains(id))result.add(id);
+        }
+        // Read older version's set of favourites when present.
+        Set<String> legacy=preferences.getStringSet("favorites",Collections.emptySet());
+        ArrayList<String> leftovers=new ArrayList<>(legacy);Collections.sort(leftovers);
+        for(String id:leftovers)if(!result.contains(id))result.add(id);
+        return result;
+    }
+    private void saveFavoriteIds(ArrayList<String> favorites){
+        preferences.edit()
+            .putString("favorite_order",TextUtils.join(",",favorites))
+            .remove("favorites").apply();
+    }
+    private List<TvApp> favoriteApps(){
+        ArrayList<TvApp> result=new ArrayList<>();
+        for(String id:getFavoriteIds()){
+            for(TvApp a:apps)if(a.pkg.equals(id)){result.add(a);break;}
+        }
+        return result;
+    }
+    private void editFavorite(TvApp app){
+        ArrayList<String> favorite=getFavoriteIds();
+        boolean contained=favorite.contains(app.pkg);
+        String[] options=contained?
+            new String[]{"Переместить левее","Переместить правее","Убрать из избранного"}:
+            new String[]{"Добавить в избранное"};
+        new AlertDialog.Builder(this)
+            .setTitle(app.label)
+            .setItems(options,(dialog,which)->{
+                if(!contained)favorite.add(app.pkg);
+                else if(which==0 && favorite.indexOf(app.pkg)>0){
+                    int index=favorite.indexOf(app.pkg);
+                    Collections.swap(favorite,index,index-1);
+                }else if(which==1 && favorite.indexOf(app.pkg)<favorite.size()-1){
+                    int index=favorite.indexOf(app.pkg);
+                    Collections.swap(favorite,index,index+1);
+                }else if(which==2)favorite.remove(app.pkg);
+                saveFavoriteIds(favorite);
+                selectedPackage=app.pkg;
+                render(page);
+            }).setNegativeButton("Отмена",null).show();
+    }
     private List<TvApp> forHome(){
         ArrayList<TvApp> list=new ArrayList<>(apps);
-        Set<String> favorites=preferences.getStringSet("favorites",Collections.emptySet());
+        Set<String> favorites=new HashSet<>(getFavoriteIds());
         list.sort((a,b)->{
             int x=rank(a,favorites),y=rank(b,favorites);
             return x!=y?Integer.compare(x,y):a.label.compareToIgnoreCase(b.label);
