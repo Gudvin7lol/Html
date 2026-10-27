@@ -364,6 +364,12 @@ public final class MainActivity extends Activity {
         pill(buttons,"Smart VPN",this::openVpn);
         overlay.addView(buttons);
 
+        // Real, tappable indicators float over the poster on sufficiently wide TVs.
+        // Compact 720p screens keep the artwork unobstructed.
+        float screenWidth=getResources().getDisplayMetrics().widthPixels/
+            getResources().getDisplayMetrics().density;
+        if(screenWidth>=880 && !compact)decorateHero(hero);
+
         int heroHeight=Math.min(328,Math.max(compact?222:265,(int)(screenHeight*.43f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
@@ -386,16 +392,63 @@ public final class MainActivity extends Activity {
             c.addView(quick);
         }
     }
+    private TvApp lastVideoService(){
+        for(TvApp app:recentApps())if(isMedia(app)&&!getHiddenIds().contains(app.pkg))return app;
+        return null;
+    }
+    private void decorateHero(FrameLayout hero){
+        LinearLayout stack=col();
+        stack.setPadding(dp(4),dp(4),dp(4),dp(4));
+        stack.setGravity(Gravity.CENTER_VERTICAL);
+        stack.setClipChildren(false);
+        FrameLayout.LayoutParams right=new FrameLayout.LayoutParams(dp(202),dp(177),
+            Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+        right.rightMargin=dp(23);
+        hero.addView(stack,right);
+
+        TvApp video=lastVideoService();
+        LinearLayout continueCard=col();
+        continueCard.setPadding(dp(16),dp(12),dp(12),dp(10));
+        selectable(continueCard,0xDA1E2631);
+        TextView caption=text("НЕДАВНО ОТКРЫВАЛИ",10,ACCENT,true);
+        caption.setLetterSpacing(.09f);
+        continueCard.addView(caption);
+        gap(continueCard,4);
+        TextView name=text(video==null?"Кино и ТВ":video.label,18,WHITE,true);
+        name.setSingleLine(true);name.setEllipsize(TextUtils.TruncateAt.END);
+        continueCard.addView(name);
+        continueCard.addView(text(video==null?"Все видеоприложения":"Открыть приложение",11,MUTED,false));
+        continueCard.setOnClickListener(v->{
+            if(video==null)switchTo(1);
+            else if(isYouTube(video))launchYouTube();
+            else openDirect(video);
+        });
+        stack.addView(continueCard,new LinearLayout.LayoutParams(-1,dp(82)));
+        gap(stack,9);
+
+        LinearLayout vpnCard=row();
+        vpnCard.setPadding(dp(15),0,dp(12),0);
+        selectable(vpnCard,0xDB1E2631);
+        TvIcon shield=new TvIcon(this,4,vpnConnected()?0xFF83DFAF:ACCENT);
+        LinearLayout.LayoutParams shieldSize=new LinearLayout.LayoutParams(dp(27),dp(27));
+        shieldSize.rightMargin=dp(12);
+        vpnCard.addView(shield,shieldSize);
+        LinearLayout status=col();
+        status.addView(text("SMART VPN",11,ACCENT,true));
+        status.addView(text(vpnConnected()?"Подключение активно":"Открыть v2RayTun",12,WHITE,false));
+        vpnCard.addView(status);
+        vpnCard.setOnClickListener(v->openVpn());
+        stack.addView(vpnCard,new LinearLayout.LayoutParams(-1,dp(69)));
+    }
     private void openBestVideo(){
-        // A predictable action: last video service if available, otherwise YouTube,
-        // otherwise offer the video-app selection. Never open an arbitrary alphabetic app.
-        for(TvApp a:recentApps())if(isMedia(a)&&!getHiddenIds().contains(a.pkg)){
-            if(isYouTube(a))launchYouTube();
-            else openDirect(a);
+        TvApp last=lastVideoService();
+        if(last!=null){
+            if(isYouTube(last))launchYouTube();
+            else openDirect(last);
             return;
         }
         TvApp youTube=youtubeApp();
-        if(youTube!=null){launchYouTube();return;}
+        if(youTube!=null&&!getHiddenIds().contains(youTube.pkg)){launchYouTube();return;}
         switchTo(1);
     }
     private ArrayList<TvApp> recentApps(){
