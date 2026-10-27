@@ -1206,9 +1206,21 @@ public final class MainActivity extends Activity {
         selectable(b,primary?ACCENT:SURFACE2);
         if(primary){
             b.setTextColor(0xFF1B1E25);
-            b.setBackground(bg(ACCENT,false,14));
+            GradientDrawable gradient=new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xFFFFDFC1,0xFFF4B28F,0xFFEBA07D});
+            gradient.setCornerRadius(dp(22));
+            gradient.setStroke(dp(1),0xFFFFEAD7);
+            b.setBackground(gradient);
+            b.setElevation(dp(5));
             b.setOnFocusChangeListener((view,focused)->{
-                b.setBackground(bg(focused?0xFFFFD5B7:ACCENT,focused,14));
+                GradientDrawable focusPaint=new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    focused?new int[]{0xFFFFF0DE,0xFFFFC498,0xFFF1AA7F}:
+                        new int[]{0xFFFFDFC1,0xFFF4B28F,0xFFEBA07D});
+                focusPaint.setCornerRadius(dp(22));
+                focusPaint.setStroke(dp(focused?2:1),0xFFFFEAD7);
+                b.setBackground(focusPaint);
                 if(preferences.getBoolean("motion",true))
                     b.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f).setDuration(120).start();
             });
@@ -1305,7 +1317,7 @@ public final class MainActivity extends Activity {
     private void tile(LinearLayout r,TvApp a,boolean compactCard){
         FrameLayout card=new FrameLayout(this);
         int tint=cardColor(a);
-        card.setBackground(glass(0xEE171F2D,false,16));
+        card.setBackground(glass(compactCard?tint:0xEE171F2D,false,compactCard?12:16));
         card.setClipToOutline(true);
         card.setClipChildren(true);
         card.setFocusable(true);
@@ -1325,7 +1337,8 @@ public final class MainActivity extends Activity {
                 new int[]{0x1108111C,0x330D1320,0xED080F18}));
             card.addView(veil,new FrameLayout.LayoutParams(-1,-1));
         }else{
-            card.addView(new CardArtView(this,tint),new FrameLayout.LayoutParams(-1,-1));
+            if(!compactCard)card.addView(new CardArtView(this,tint),
+                new FrameLayout.LayoutParams(-1,-1));
             ImageView icon=new ImageView(this);
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
