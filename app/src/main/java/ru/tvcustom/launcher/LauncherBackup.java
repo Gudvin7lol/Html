@@ -45,6 +45,9 @@ public final class LauncherBackup {
         options.put("youtube_vpn",p.getBoolean("youtube_vpn",true));
         options.put("large_cards",p.getBoolean("large_cards",true));
         options.put("show_recent",p.getBoolean("show_recent",true));
+        options.put("featured_title",p.getString("featured_title","НОВЫЕ МИРЫ"));
+        options.put("featured_caption",p.getString("featured_caption",
+            "Любимые истории и установленные сервисы."));
         output.put("options",options);
         // SAF URI permission doesn't migrate across installs, so poster_uri is not backed up.
         return output.toString(2);
@@ -88,6 +91,11 @@ public final class LauncherBackup {
         boolean vpn=options.optBoolean("youtube_vpn",true);
         boolean large=options.optBoolean("large_cards",true);
         boolean recentEnabled=options.optBoolean("show_recent",true);
+        String featuredTitle=options.optString("featured_title","НОВЫЕ МИРЫ");
+        String featuredCaption=options.optString("featured_caption",
+            "Любимые истории и установленные сервисы.");
+        if(featuredTitle.length()>32 || featuredCaption.length()>90)
+            throw new JSONException("Слишком длинная подпись постера");
         p.edit()
           .putString("favorite_order",android.text.TextUtils.join(",",ids))
           .putString("recent_apps",android.text.TextUtils.join(",",recent))
@@ -98,6 +106,8 @@ public final class LauncherBackup {
           .putBoolean("youtube_vpn",vpn)
           .putBoolean("large_cards",large)
           .putBoolean("show_recent",recentEnabled)
+          .putString("featured_title",featuredTitle)
+          .putString("featured_caption",featuredCaption)
           .apply();
         return ids.size();
     }
