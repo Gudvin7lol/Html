@@ -63,3 +63,11 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - No system apps disabled, no root, no privileged package modifications.
 - CI checks Android package ID, version, debug signature and SHA-256.
 - Note: GitHub runner debug key may rotate; uninstall or later stable signing may be required to upgrade. Export settings before uninstalling.
+
+## Version 1.7
+- Main banner adapts to compact-screen Android TVs (prevents cropped text and controls).
+- Menu-right D-pad navigation explicitly targets first real focusable content item; back-left returns to active section.
+- Recent apps refresh when returning from playback; attempts to retain selected app tile and homepage scroll position.
+- Device diagnostics from Android APIs: free/total storage, RAM, screen pixel resolution, Android version, network and VPN status.
+- No new background services or privileged access. The VPN handoff still requires user interaction in v2RayTun.
+- CI compiles and verifies debug-signed package and version identity, plus SHA-256.
