@@ -69,6 +69,10 @@ public final class TvIcon extends View {
           case 8: // Play
             path.reset();path.moveTo(8,5);path.lineTo(19,12);path.lineTo(8,19);path.close();
             p.setStyle(Paint.Style.FILL);c.drawPath(path,p);break;
+          case 9: // Search
+            c.drawCircle(10.2f,10.2f,5.8f,p);
+            c.drawLine(14.5f,14.5f,21,21,p);
+            break;
           default: // List
             for(int y=6;y<=18;y+=6){c.drawLine(5,y,20,y,p);c.drawCircle(2.5f,y,.5f,p);}
         }
