@@ -493,6 +493,7 @@ public final class MainActivity extends Activity {
         tile.setClipToOutline(true);
         tile.setFocusable(true);tile.setFocusableInTouchMode(false);
         tile.setContentDescription(label);
+        final int visualIndex=cinemaCardIndex++;
         if(banner!=null){
             ImageView art=new ImageView(this);
             art.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -500,11 +501,14 @@ public final class MainActivity extends Activity {
             tile.addView(art,new FrameLayout.LayoutParams(-1,-1));
         }else{
             Bitmap cinematic=loadPoster();
-            if(cinematic!=null)
-                tile.addView(new PosterSliceView(this,cinematic,cinemaCardIndex++),
+            if(cinematic!=null && visualIndex==0)
+                tile.addView(new PosterSliceView(this,cinematic,0),
                     new FrameLayout.LayoutParams(-1,-1));
-            else tile.addView(new CardArtView(this,0xFF344A66),
+            else{
+                int[] palette={0xFF263D59,0xFF6E4026,0xFF224763,0xFF226258};
+                tile.addView(new CardArtView(this,palette[visualIndex%palette.length]),
                     new FrameLayout.LayoutParams(-1,-1));
+            }
         }
         if(icon!=null){
             ImageView appIcon=new ImageView(this);
