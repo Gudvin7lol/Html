@@ -785,7 +785,29 @@ public final class MainActivity extends Activity {
         FrameLayout tile=new FrameLayout(this);
         int base=cardColor(a);
         tile.setClipToOutline(true);
-        selectable(tile,base);
+        // A normal background focus ring is hidden behind banner images.
+        // Draw the D-pad focus ring as the foreground so it remains visible.
+        tile.setBackground(glass(base,false,14));
+        tile.setFocusable(true);
+        tile.setFocusableInTouchMode(false);
+        tile.setOnFocusChangeListener((v,focused)->{
+            GradientDrawable border=new GradientDrawable();
+            border.setColor(0x00000000);
+            border.setCornerRadius(dp(14));
+            border.setStroke(dp(focused?3:1),focused?ACCENT:0x4B8D97A6);
+            tile.setForeground(border);
+            if(preferences.getBoolean("motion",true)){
+                tile.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f)
+                    .setDuration(125).start();
+            }else{tile.setScaleX(1f);tile.setScaleY(1f);}
+            tile.setElevation(dp(focused?8:0));
+        });
+        GradientDrawable initialBorder=new GradientDrawable();
+        initialBorder.setColor(0x00000000);
+        initialBorder.setCornerRadius(dp(14));
+        initialBorder.setStroke(dp(1),0x4B8D97A6);
+        tile.setForeground(initialBorder);
+        tile.setContentDescription(a.label);
         if(a.banner!=null){
             ImageView banner=new ImageView(this);
             banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
