@@ -54,7 +54,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.10.2-real-emulator-screenshot
+          name: XiaomiTVCustom-1.10.3-real-emulator-screenshot
           path: |
             tv_ui.png
             emulator_activity.txt
