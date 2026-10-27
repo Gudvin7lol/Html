@@ -343,7 +343,7 @@ public final class MainActivity extends Activity {
     private void openBestVideo(){
         // A predictable action: last video service if available, otherwise YouTube,
         // otherwise offer the video-app selection. Never open an arbitrary alphabetic app.
-        for(TvApp a:recentApps())if(isMedia(a)){
+        for(TvApp a:recentApps())if(isMedia(a)&&!getHiddenIds().contains(a.pkg)){
             if(isYouTube(a))launchYouTube();
             else openDirect(a);
             return;
@@ -356,7 +356,7 @@ public final class MainActivity extends Activity {
         ArrayList<TvApp> result=new ArrayList<>();
         for(String pkg:preferences.getString("recent_apps","").split(",")){
             if(pkg.isEmpty())continue;
-            for(TvApp a:apps)if(a.pkg.equals(pkg)){result.add(a);break;}
+            for(TvApp a:apps)if(a.pkg.equals(pkg)&&!getHiddenIds().contains(a.pkg)){result.add(a);break;}
         }
         return result;
     }
@@ -498,10 +498,10 @@ public final class MainActivity extends Activity {
         else appGrid(c,stream);
     }
     private void allApps(LinearLayout c){
-        title(c,"Все приложения",apps.size()+" программ · ОК запускает · удержание ОК добавляет в избранное");
+        title(c,"Все приложения",apps.size()+" установлено · Удержание ОК открывает меню приложения");
         LinearLayout filters=row();
-        String[] labels={"Все","Избранное","Кино и ТВ","Системные","Поиск"};
-        String[] ids={"all","fav","media","system","search"};
+        String[] labels={"Все","Избранное","Кино и ТВ","Скрытые","Системные","Поиск"};
+        String[] ids={"all","fav","media","hidden","system","search"};
         for(int i=0;i<labels.length;i++){
             final String id=ids[i];
             TextView t=text(labels[i],13,id.equals(appFilter)?0xFF101319:WHITE,true);
@@ -519,7 +519,9 @@ public final class MainActivity extends Activity {
         filterScroll.addView(filters);c.addView(filterScroll);gap(c,19);
         ArrayList<TvApp> visible=new ArrayList<>();
         Set<String> favorites=new HashSet<>(getFavoriteIds());
+        Set<String> hidden=getHiddenIds();
         for(TvApp a:apps){
+            if(appFilter.equals("hidden")?!hidden.contains(a.pkg):hidden.contains(a.pkg))continue;
             if(appFilter.equals("fav")&&!favorites.contains(a.pkg))continue;
             if(appFilter.equals("media")&&!isMedia(a))continue;
             if(appFilter.equals("system")&&!isSystem(a))continue;
@@ -529,7 +531,7 @@ public final class MainActivity extends Activity {
         if(!searchQuery.isEmpty()){
             c.addView(text("Поиск: "+searchQuery,14,ACCENT,true));gap(c,12);
         }
-        if(visible.isEmpty())c.addView(text("Здесь пока нет приложений. Выбери другую категорию.",16,MUTED,false));
+        if(visible.isEmpty())c.addView(text(appFilter.equals("hidden")?"Скрытых приложений нет.":"В этой категории пока ничего нет.",16,MUTED,false));
         else appGrid(c,visible);
     }
     private boolean isMedia(TvApp a){
@@ -653,6 +655,9 @@ public final class MainActivity extends Activity {
         action(c,"Экспорт настроек","Избранное, порядок и параметры в JSON",this::exportSettings);
         action(c,"Импорт настроек","Восстановить ранее сохранённую конфигурацию",this::importSettings);
         gap(c,16);
+        action(c,"Показать скрытые приложения","Изменить список программ, убранных из главного меню",()->{
+            appFilter="hidden";searchQuery="";switchTo(2);
+        });
         action(c,"Сбросить порядок избранного","Не удаляет установленные приложения",()->{
             new AlertDialog.Builder(this).setTitle("Очистить избранное?")
                 .setMessage("Удалить только отметки избранных программ?")
@@ -855,34 +860,61 @@ public final class MainActivity extends Activity {
     private List<TvApp> favoriteApps(){
         ArrayList<TvApp> result=new ArrayList<>();
         for(String id:getFavoriteIds()){
-            for(TvApp a:apps)if(a.pkg.equals(id)){result.add(a);break;}
+            for(TvApp a:apps)if(a.pkg.equals(id)&&!getHiddenIds().contains(a.pkg)){result.add(a);break;}
         }
         return result;
+    }
+    private Set<String> getHiddenIds(){
+        String value=preferences.getString("hidden_packages","");
+        Set<String> hidden=new HashSet<>();
+        for(String pkg:value.split(","))if(!pkg.isEmpty())hidden.add(pkg);
+        return hidden;
+    }
+    private void toggleHidden(TvApp app){
+        Set<String> hidden=getHiddenIds();
+        boolean wasHidden=hidden.contains(app.pkg);
+        if(wasHidden)hidden.remove(app.pkg);
+        else hidden.add(app.pkg);
+        ArrayList<String> ordered=new ArrayList<>(hidden);
+        Collections.sort(ordered);
+        preferences.edit().putString("hidden_packages",TextUtils.join(",",ordered)).apply();
+        selectedPackage=wasHidden?app.pkg:"";
+        render(page);
+        Toast.makeText(this,wasHidden?"Приложение снова отображается":"Скрыто только в лаунчере",Toast.LENGTH_SHORT).show();
     }
     private void editFavorite(TvApp app){
         ArrayList<String> favorite=getFavoriteIds();
         boolean contained=favorite.contains(app.pkg);
-        String[] options=contained?
-            new String[]{"Переместить левее","Переместить правее","Убрать из избранного"}:
-            new String[]{"Добавить в избранное"};
+        boolean hidden=getHiddenIds().contains(app.pkg);
+        ArrayList<String> actions=new ArrayList<>();
+        if(contained){
+            if(favorite.indexOf(app.pkg)>0)actions.add("Переместить левее");
+            if(favorite.indexOf(app.pkg)<favorite.size()-1)actions.add("Переместить правее");
+            actions.add("Убрать из избранного");
+        }else actions.add("Добавить в избранное");
+        actions.add(hidden?"Показать в лаунчере":"Скрыть из лаунчера");
         new AlertDialog.Builder(this)
             .setTitle(app.label)
-            .setItems(options,(dialog,which)->{
-                if(!contained)favorite.add(app.pkg);
-                else if(which==0 && favorite.indexOf(app.pkg)>0){
+            .setItems(actions.toArray(new String[0]),(dialog,which)->{
+                String action=actions.get(which);
+                if(action.equals("Переместить левее")){
                     int index=favorite.indexOf(app.pkg);
-                    Collections.swap(favorite,index,index-1);
-                }else if(which==1 && favorite.indexOf(app.pkg)<favorite.size()-1){
+                    if(index>0)Collections.swap(favorite,index,index-1);
+                }else if(action.equals("Переместить правее")){
                     int index=favorite.indexOf(app.pkg);
-                    Collections.swap(favorite,index,index+1);
-                }else if(which==2)favorite.remove(app.pkg);
+                    if(index>=0&&index<favorite.size()-1)Collections.swap(favorite,index,index+1);
+                }else if(action.equals("Убрать из избранного"))favorite.remove(app.pkg);
+                else if(action.equals("Добавить в избранное")){
+                    if(!favorite.contains(app.pkg))favorite.add(app.pkg);
+                }else{toggleHidden(app);return;}
                 saveFavoriteIds(favorite);
                 selectedPackage=app.pkg;
                 render(page);
             }).setNegativeButton("Отмена",null).show();
     }
     private List<TvApp> forHome(){
-        ArrayList<TvApp> list=new ArrayList<>(apps);
+        ArrayList<TvApp> list=new ArrayList<>();
+        for(TvApp a:apps)if(!getHiddenIds().contains(a.pkg))list.add(a);
         Set<String> favorites=new HashSet<>(getFavoriteIds());
         list.sort((a,b)->{
             int x=rank(a,favorites),y=rank(b,favorites);
