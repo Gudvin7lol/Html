@@ -61,6 +61,10 @@ public final class MainActivity extends Activity {
     private String searchQuery="";
     private String selectedPackage="";
     private int knownAppCount=0;
+    private boolean recentNeedsRefresh=false;
+    private View rootView;
+    private ScrollView currentScroll;
+    private int lastHomeScrollY=0;
     private boolean packageListDirty=false;
     private final BroadcastReceiver packageUpdates = new BroadcastReceiver(){
         @Override public void onReceive(Context context,Intent intent){
@@ -108,8 +112,16 @@ public final class MainActivity extends Activity {
                 if(target!=null){openDirect(target);return;}
             }
         }
-        if(updated){
+        if(updated || (recentNeedsRefresh && page==0)){
             knownAppCount=apps.size();
+            recentNeedsRefresh=false;
+            if(page==0){
+                View focus=getCurrentFocus();
+                // Resume with visual focus restored instead of jumping to the sidebar.
+                if(focus!=null && focus.getTag() instanceof String)
+                    selectedPackage=(String)focus.getTag();
+                if(currentScroll!=null)lastHomeScrollY=currentScroll.getScrollY();
+            }
             render(page);
         }
     }
@@ -238,10 +250,12 @@ public final class MainActivity extends Activity {
         panel=new FrameLayout(this);
         main.addView(panel,new LinearLayout.LayoutParams(0,-1,1f));
         base.addView(main,new LinearLayout.LayoutParams(-1,0,1f));
+        rootView=root;
         setContentView(root);render(0);
         nav.get(0).requestFocus();
     }
     private void switchTo(int to){
+        if(page==0 && currentScroll!=null)lastHomeScrollY=currentScroll.getScrollY();
         if(to==6 && page!=6)lastVisitedPage=page;
         pendingYouTube=false;
         page=to;
@@ -265,7 +279,9 @@ public final class MainActivity extends Activity {
         if(panel==null)return;
         highlightPage();
         panel.removeAllViews();
-        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
+        ScrollView sc=new ScrollView(this);
+        currentScroll=sc;
+        sc.setFillViewport(true);
         sc.setVerticalScrollBarEnabled(false);sc.setClipToPadding(false);
         panel.addView(sc,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout c=col();c.setPadding(dp(6),dp(9),dp(5),dp(9));sc.addView(c);
@@ -278,6 +294,33 @@ public final class MainActivity extends Activity {
           case 6: controlCenter(c);break;
           default:home(c);break;
         }
+        wireRemoteFocus(to);
+        if(to==0 && lastHomeScrollY>0){
+            int offset=lastHomeScrollY;
+            sc.post(()->sc.scrollTo(0,offset));
+        }
+    }
+    private void wireRemoteFocus(int currentPage){
+        View first=findFirstFocusable(panel);
+        int navPage=currentPage<nav.size()?currentPage:Math.min(lastVisitedPage,nav.size()-1);
+        if(first==null || navPage<0)return;
+        View activeNav=nav.get(navPage);
+        if(first.getId()==View.NO_ID)first.setId(View.generateViewId());
+        if(activeNav.getId()==View.NO_ID)activeNav.setId(View.generateViewId());
+        activeNav.setNextFocusRightId(first.getId());
+        // Left from the first content control returns to the active section.
+        first.setNextFocusLeftId(activeNav.getId());
+    }
+    private View findFirstFocusable(View view){
+        if(view!=null && view.isFocusable() && view.getVisibility()==View.VISIBLE)return view;
+        if(view instanceof ViewGroup){
+            ViewGroup group=(ViewGroup)view;
+            for(int i=0;i<group.getChildCount();i++){
+                View candidate=findFirstFocusable(group.getChildAt(i));
+                if(candidate!=null)return candidate;
+            }
+        }
+        return null;
     }
     private void title(LinearLayout parent,String t,String subtitle){
         parent.addView(text(t,26,WHITE,true));gap(parent,4);
@@ -366,6 +409,7 @@ public final class MainActivity extends Activity {
             if(!p.isEmpty()&&!ids.contains(p)&&ids.size()<8)ids.add(p);
         }
         preferences.edit().putString("recent_apps",TextUtils.join(",",ids)).apply();
+        recentNeedsRefresh=true;
     }
     private Bitmap loadPoster(){
         if(customPoster!=null)return customPoster;
@@ -829,6 +873,7 @@ public final class MainActivity extends Activity {
         initialBorder.setStroke(dp(1),0x4B8D97A6);
         tile.setForeground(initialBorder);
         tile.setContentDescription(a.label);
+        tile.setTag(a.pkg);
         if(a.banner!=null){
             ImageView banner=new ImageView(this);
             banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
