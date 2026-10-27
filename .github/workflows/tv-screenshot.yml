@@ -22,7 +22,12 @@ jobs:
         run: gradle :app:assembleDebug --no-daemon --stacktrace
       - name: Enable hardware virtualization
         run: |
-          if [ -e /dev/kvm ]; then ls -la /dev/kvm; else echo "Emulator may run slowly: no /dev/kvm"; fi
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -la /dev/kvm
+          else
+            echo "Emulator KVM unavailable"
+          fi
       - name: Launch actual app and capture 1080p screenshot
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -31,10 +36,9 @@ jobs:
           arch: x86_64
           avd-name: tv-launcher-qa
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
-          disable-animations: true
           script: |
-            adb shell wm size 1920x1080
-            adb shell wm density 160
+            adb shell wm size 1920x1080 || true
+            adb shell wm density 160 || true
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n ru.tvcustom.launcher/.MainActivity
             sleep 12
@@ -47,7 +51,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.10-real-emulator-screenshot
+          name: XiaomiTVCustom-1.10.1-real-emulator-screenshot
           path: |
             tv_ui.png
             emulator_activity.txt
