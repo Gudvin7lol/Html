@@ -941,69 +941,85 @@ public final class MainActivity extends Activity {
         if(p.contains("vk")||p.contains("видео"))return 0xFF164681;
         return SURFACE;
     }
+    private GradientDrawable focusStroke(boolean focused){
+        GradientDrawable stroke=new GradientDrawable();
+        stroke.setColor(0x00000000);
+        stroke.setCornerRadius(dp(16));
+        stroke.setStroke(dp(focused?3:1),focused?ACCENT:0x66566077);
+        return stroke;
+    }
     private void tile(LinearLayout r,TvApp a){
-        FrameLayout tile=new FrameLayout(this);
-        int base=cardColor(a);
-        tile.setClipToOutline(true);
-        // A normal background focus ring is hidden behind banner images.
-        // Draw the D-pad focus ring as the foreground so it remains visible.
-        tile.setBackground(glass(base,false,14));
-        tile.setFocusable(true);
-        tile.setFocusableInTouchMode(false);
-        tile.setOnFocusChangeListener((v,focused)->{
-            GradientDrawable border=new GradientDrawable();
-            border.setColor(0x00000000);
-            border.setCornerRadius(dp(14));
-            border.setStroke(dp(focused?3:1),focused?ACCENT:0x4B8D97A6);
-            tile.setForeground(border);
-            if(preferences.getBoolean("motion",true)){
-                tile.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f)
-                    .setDuration(125).start();
-            }else{tile.setScaleX(1f);tile.setScaleY(1f);}
-            tile.setElevation(dp(focused?8:0));
-        });
-        GradientDrawable initialBorder=new GradientDrawable();
-        initialBorder.setColor(0x00000000);
-        initialBorder.setCornerRadius(dp(14));
-        initialBorder.setStroke(dp(1),0x4B8D97A6);
-        tile.setForeground(initialBorder);
-        tile.setContentDescription(a.label);
-        tile.setTag(a.pkg);
+        FrameLayout card=new FrameLayout(this);
+        int tint=cardColor(a);
+        card.setBackground(glass(0xEE171F2D,false,16));
+        card.setClipToOutline(true);
+        card.setClipChildren(true);
+        card.setFocusable(true);
+        card.setFocusableInTouchMode(false);
+        card.setContentDescription(a.label);
+        card.setTag(a.pkg);
+
+        // Use installed Android TV banners if available, never substitute fake film posters.
         if(a.banner!=null){
-            ImageView banner=new ImageView(this);
-            banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            banner.setImageDrawable(a.banner);
-            tile.addView(banner,new FrameLayout.LayoutParams(-1,-1));
-            View tint=new View(this);
-            tint.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x330B101A,0xD5080C13}));
-            tile.addView(tint,new FrameLayout.LayoutParams(-1,-1));
+            ImageView backdrop=new ImageView(this);
+            backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            backdrop.setImageDrawable(a.banner);
+            backdrop.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            card.addView(backdrop,new FrameLayout.LayoutParams(-1,-1));
+            View veil=new View(this);
+            veil.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x1108111C,0x330D1320,0xED080F18}));
+            card.addView(veil,new FrameLayout.LayoutParams(-1,-1));
         }else{
+            card.addView(new CardArtView(this,tint),new FrameLayout.LayoutParams(-1,-1));
             ImageView icon=new ImageView(this);
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(preferences.getBoolean("large_cards",true)?74:59),dp(preferences.getBoolean("large_cards",true)?70:57),Gravity.CENTER);
-            ip.bottomMargin=dp(12);
-            tile.addView(icon,ip);
+            int iconDp=preferences.getBoolean("large_cards",true)?74:60;
+            FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(iconDp),dp(iconDp),Gravity.CENTER);
+            ip.bottomMargin=dp(19);
+            card.addView(icon,ip);
         }
-        boolean light=base==0xFFF0F2F6 && a.banner==null;
-        TextView name=text(a.label,12,light?0xFF18202A:WHITE,true);
-        name.setGravity(Gravity.CENTER);name.setMaxLines(1);
+        // Frosted-looking caption strip. Keep app name legible on both banners and icons.
+        LinearLayout labelStrip=row();
+        labelStrip.setPadding(dp(10),0,dp(9),0);
+        labelStrip.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{0xC6141A24,0xB018202C}));
+        FrameLayout.LayoutParams stripLp=new FrameLayout.LayoutParams(-1,dp(31),Gravity.BOTTOM);
+        stripLp.leftMargin=dp(1);stripLp.rightMargin=dp(1);stripLp.bottomMargin=dp(1);
+        TextView name=text(a.label,12,WHITE,true);
+        name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
-        FrameLayout.LayoutParams titleParams=new FrameLayout.LayoutParams(-1,dp(28),Gravity.BOTTOM);
-        titleParams.leftMargin=dp(7);titleParams.rightMargin=dp(7);
-        titleParams.bottomMargin=dp(5);
-        tile.addView(name,titleParams);
+        labelStrip.addView(name,new LinearLayout.LayoutParams(0,-1,1f));
+        if(getFavoriteIds().contains(a.pkg)){
+            TextView favorite=text("★",13,ACCENT,true);
+            favorite.setGravity(Gravity.CENTER);
+            labelStrip.addView(favorite,new LinearLayout.LayoutParams(dp(19),-1));
+        }
+        card.addView(labelStrip,stripLp);
+        card.setForeground(focusStroke(false));
+        card.setOnFocusChangeListener((view,focused)->{
+            card.setForeground(focusStroke(focused));
+            if(preferences.getBoolean("motion",true)){
+                card.animate().scaleX(focused?1.028f:1f).scaleY(focused?1.028f:1f)
+                    .setDuration(130).start();
+            }else{
+                card.animate().cancel();
+                card.setScaleX(1f);card.setScaleY(1f);
+            }
+            card.setElevation(dp(focused?9:0));
+        });
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(tileHeight()));
         lp.setMargins(dp(3),0,dp(9),0);
-        r.addView(tile,lp);
-        tile.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
-        tile.setOnLongClickListener(v->{editFavorite(a);return true;});
+        r.addView(card,lp);
+        card.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
+        card.setOnLongClickListener(v->{editFavorite(a);return true;});
         if(a.pkg.equals(selectedPackage)){
             selectedPackage="";
-            tile.post(tile::requestFocus);
+            card.post(card::requestFocus);
         }
     }
+
     private void refreshApps(){
         PackageManager pm=getPackageManager();HashMap<String,TvApp> unique=new HashMap<>();
         for(String category:new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER,Intent.CATEGORY_LAUNCHER}){
