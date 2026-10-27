@@ -33,6 +33,9 @@ public final class LauncherBackup {
         }
         for(String id:order)favorites.put(id);
         output.put("favorites",favorites);
+        JSONArray hidden=new JSONArray();
+        for(String pkg:parseIds(p.getString("hidden_packages","")))hidden.put(pkg);
+        output.put("hidden",hidden);
         JSONArray recent=new JSONArray();
         for(String id:parseIds(p.getString("recent_apps","")))recent.put(id);
         output.put("recent",recent);
@@ -61,6 +64,17 @@ public final class LauncherBackup {
             if(!id.matches("[A-Za-z][A-Za-z0-9_.]{0,199}"))throw new JSONException("Неверное имя пакета");
             if(!ids.contains(id))ids.add(id);
         }
+        ArrayList<String> hidden=new ArrayList<>();
+        JSONArray hiddenData=data.optJSONArray("hidden");
+        if(hiddenData!=null){
+            if(hiddenData.length()>100)throw new JSONException("Слишком много скрытых приложений");
+            for(int i=0;i<hiddenData.length();i++){
+                String id=hiddenData.optString(i,"");
+                if(!id.matches("[A-Za-z][A-Za-z0-9_.]{0,199}"))
+                    throw new JSONException("Неверный идентификатор приложения");
+                if(!hidden.contains(id))hidden.add(id);
+            }
+        }
         ArrayList<String> recent=new ArrayList<>();
         JSONArray r=data.optJSONArray("recent");
         if(r!=null){
@@ -77,6 +91,7 @@ public final class LauncherBackup {
         p.edit()
           .putString("favorite_order",android.text.TextUtils.join(",",ids))
           .putString("recent_apps",android.text.TextUtils.join(",",recent))
+          .putString("hidden_packages",android.text.TextUtils.join(",",hidden))
           .remove("favorites")
           .putBoolean("motion",motion)
           .putBoolean("scenic",scenic)
