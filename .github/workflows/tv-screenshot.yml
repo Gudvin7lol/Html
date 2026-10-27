@@ -54,6 +54,8 @@ jobs:
             adb shell input keyevent 4
             adb shell input keyevent 20
             adb shell input keyevent 20
+            adb shell input keyevent 20
+            adb shell input keyevent 20
             adb shell input keyevent 23
             sleep 2
             adb shell screencap -p /sdcard/tv_apps.png
@@ -68,7 +70,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.11.0-real-emulator-screenshots
+          name: XiaomiTVCustom-1.12.0-real-emulator-screenshots
           path: |
             tv_home.png
             tv_controls.png
