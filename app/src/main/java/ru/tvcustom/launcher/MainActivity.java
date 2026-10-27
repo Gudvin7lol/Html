@@ -336,8 +336,16 @@ public final class MainActivity extends Activity {
         gap(parent,16);
     }
     private void home(LinearLayout c){
+        float screenWidth=getResources().getDisplayMetrics().widthPixels/
+            getResources().getDisplayMetrics().density;
+        float screenHeight=getResources().getDisplayMetrics().heightPixels/
+            getResources().getDisplayMetrics().density;
+        boolean compact=screenHeight<700;
+        boolean wide=screenWidth>=980;
+        // The approved concept uses a cinematic feature and a separate dock of apps.
+        LinearLayout stage=row();stage.setGravity(Gravity.TOP);
         FrameLayout hero=new FrameLayout(this);
-        hero.setBackground(glass(0xE817202D,false,20));
+        hero.setBackground(glass(0xF215202E,false,18));
         hero.setClipToOutline(true);
         Bitmap poster=loadPoster();
         if(poster!=null){
@@ -345,59 +353,150 @@ public final class MainActivity extends Activity {
             bgImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
             bgImage.setImageBitmap(poster);
             hero.addView(bgImage,new FrameLayout.LayoutParams(-1,-1));
-        }else{
-            hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
-        }
+        }else hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
         View shade=new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[]{0xF708101C,0xEF0B1320,0x9C101625,0x09000000}));
+            new int[]{0xF50B121F,0xD90D1725,0x4B0D121D,0x06000000}));
         hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
 
-        int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
-            getResources().getDisplayMetrics().density);
-        boolean compact=screenHeight<620;
         LinearLayout overlay=col();
-        overlay.setPadding(dp(compact?18:28),dp(compact?13:20),dp(18),dp(compact?8:15));
+        overlay.setPadding(dp(compact?17:26),dp(compact?17:25),dp(14),dp(10));
         hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-        TextView kicker=text("XIAOMI TV CUSTOM   /   БЕЗ ЛИШНЕГО",compact?10:11,ACCENT,true);
-        kicker.setLetterSpacing(.12f);overlay.addView(kicker);gap(overlay,compact?7:14);
-        TextView headline=text("Кино начинается\nздесь.",compact?27:36,WHITE,true);
-        headline.setLineSpacing(0,1.02f);overlay.addView(headline);gap(overlay,compact?4:8);
-        overlay.addView(text("Фильмы, сериалы и любимые приложения.\nВсё под рукой, без рекламы в меню.",compact?12:14,0xFFD5DBE5,false));
-        gap(overlay,compact?8:15);
-        LinearLayout buttons=row();
-        pill(buttons,"Смотреть",this::openBestVideo);
-        pill(buttons,"Приложения",()->switchTo(2));
-        overlay.addView(buttons);
+        TextView kicker=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",compact?10:11,ACCENT,true);
+        kicker.setLetterSpacing(.16f);overlay.addView(kicker);gap(overlay,compact?9:15);
+        TextView headline=text("Время\nхорошего кино.",compact?29:36,WHITE,true);
+        headline.setLineSpacing(0,1.01f);overlay.addView(headline);
+        gap(overlay,compact?6:9);
+        overlay.addView(text("Любимые фильмы и сервисы.\nОдин экран, ничего лишнего.",
+            compact?12:14,0xFFE3E6EE,false));
+        gap(overlay,compact?10:17);
+        LinearLayout controls=row();
+        pill(controls,"Смотреть",this::openBestVideo);
+        pill(controls,"Приложения",()->switchTo(2));
+        overlay.addView(controls);
+        // The side dock replaces the old promotional-style floating hero cards.
+        if(!wide && screenWidth>=870)decorateHero(hero,compact);
+        int stageHeight=compact?239:(screenHeight<800?268:310);
+        if(wide){
+            LinearLayout.LayoutParams heroLp=new LinearLayout.LayoutParams(0,dp(stageHeight),1f);
+            heroLp.setMargins(0,0,dp(11),0);
+            stage.addView(hero,heroLp);
+            stage.addView(homeAppDock(stageHeight),new LinearLayout.LayoutParams(dp(282),dp(stageHeight)));
+            c.addView(stage,new LinearLayout.LayoutParams(-1,dp(stageHeight)));
+        }else{
+            c.addView(hero,new LinearLayout.LayoutParams(-1,dp(stageHeight)));
+        }
 
-        // Real, tappable indicators float over the poster on sufficiently wide TVs.
-        // Compact 720p screens keep the artwork unobstructed.
-        float screenWidth=getResources().getDisplayMetrics().widthPixels/
-            getResources().getDisplayMetrics().density;
-        if(screenWidth>=870)decorateHero(hero,compact);
-
-        int heroHeight=Math.min(326,Math.max(compact?234:255,(int)(screenHeight*.40f)));
-        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
-
-        gap(c,compact?8:12);
+        gap(c,compact?9:12);
         List<TvApp> visibleFav=favoriteApps();
         boolean pinned=!visibleFav.isEmpty();
-        sectionHead(c,pinned?"Избранные приложения":"Приложения",
-            "ОК — открыть  ·  удержание ОК — порядок и настройки",()->switchTo(2));
+        sectionHead(c,pinned?"Избранные приложения":"Ваши приложения",
+            "ОК — запуск  ·  удерживать ОК — изменить порядок",()->switchTo(2));
         appStrip(c,pinned?visibleFav:forHome(),10);
-        gap(c,8);
+        gap(c,compact?6:9);
         ArrayList<TvApp> recent=recentApps();
-        if(!recent.isEmpty() && preferences.getBoolean("show_recent",true)){
-            sectionHead(c,"Недавно открывали","История запуска с этого лаунчера",()->switchTo(2));
+        if(!recent.isEmpty()&&preferences.getBoolean("show_recent",true)){
+            sectionHead(c,"Недавно открытые","Реальная история запусков, не история фильмов",()->switchTo(2));
             appStrip(c,recent,7);
         }else{
-            sectionHead(c,"Быстрый доступ","Основные инструменты телевизора",()->switchTo(6));
+            sectionHead(c,"Быстрый доступ","Частые действия и системные настройки",()->toggleQuickPanel());
             LinearLayout quick=row();
-            quickTile(quick,"Приложения",apps.size()+" установлено",()->switchTo(2));
-            quickTile(quick,"Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
-            quickTile(quick,"HDMI","Выбор источника",()->switchTo(3));
-            c.addView(quick);
+            quickHomeAction(quick,2,"Приложения",apps.size()+" установлено",()->switchTo(2));
+            quickHomeAction(quick,6,"Интернет",networkSummary(),
+                ()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+            quickHomeAction(quick,4,"Smart VPN",vpnConnected()?"Подключено":"Открыть v2RayTun",this::openVpn);
+            c.addView(quick,new LinearLayout.LayoutParams(-1,dp(62)));
         }
+    }
+    private void quickHomeAction(LinearLayout row,int icon,String title,String subtitle,Runnable action){
+        LinearLayout item=new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dp(12),0,dp(10),0);
+        selectable(item,0xED172131);
+        TvIcon glyph=new TvIcon(this,icon,ACCENT);
+        LinearLayout.LayoutParams gl=new LinearLayout.LayoutParams(dp(21),dp(21));
+        gl.rightMargin=dp(11);item.addView(glyph,gl);
+        LinearLayout labels=col();
+        labels.addView(text(title,14,WHITE,true));
+        TextView hint=text(subtitle,10,MUTED,false);
+        hint.setSingleLine(true);hint.setEllipsize(TextUtils.TruncateAt.END);
+        labels.addView(hint);
+        item.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+        item.setOnClickListener(v->action.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);
+        lp.setMargins(0,0,dp(9),0);row.addView(item,lp);
+    }
+    private LinearLayout homeAppDock(int height){
+        LinearLayout outer=col();
+        outer.setPadding(dp(13),dp(13),dp(13),dp(10));
+        outer.setBackground(glass(0xF61B2634,false,18));
+        outer.setClipToOutline(true);
+        LinearLayout h=row();
+        TextView title=text("Все приложения",16,WHITE,true);
+        h.addView(title,new LinearLayout.LayoutParams(0,dp(32),1));
+        TextView all=text("Все  ›",12,ACCENT,true);
+        all.setGravity(Gravity.CENTER);selectable(all,0x912A3544);
+        all.setOnClickListener(v->switchTo(2));
+        h.addView(all,new LinearLayout.LayoutParams(dp(59),dp(30)));
+        outer.addView(h);gap(outer,7);
+
+        List<TvApp> show=forHome();
+        int max=Math.min(show.size(),9);
+        for(int line=0;line<3;line++){
+            LinearLayout r=row();
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            for(int j=0;j<3;j++){
+                int index=line*3+j;
+                if(index<max)miniApp(r,show.get(index));
+                else{
+                    View empty=new View(this);
+                    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(61),1);
+                    lp.setMargins(0,0,dp(6),0);r.addView(empty,lp);
+                }
+            }
+            outer.addView(r,new LinearLayout.LayoutParams(-1,0,1));
+            if(line<2)gap(outer,5);
+        }
+        return outer;
+    }
+    private void miniApp(LinearLayout parent,TvApp app){
+        FrameLayout tile=new FrameLayout(this);
+        tile.setBackground(glass(cardColor(app),false,11));
+        tile.setFocusable(true);tile.setFocusableInTouchMode(false);
+        tile.setClipToOutline(true);tile.setTag(app.pkg);
+        if(app.banner!=null){
+            ImageView banner=new ImageView(this);
+            banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            banner.setImageDrawable(app.banner);
+            tile.addView(banner,new FrameLayout.LayoutParams(-1,-1));
+        }else{
+            ImageView icon=new ImageView(this);
+            icon.setImageDrawable(app.icon);
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            tile.addView(icon,new FrameLayout.LayoutParams(dp(27),dp(27),Gravity.TOP|Gravity.CENTER_HORIZONTAL));
+        }
+        View scrim=new View(this);
+        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0x05070C16,0xCA0B101B}));
+        tile.addView(scrim,new FrameLayout.LayoutParams(-1,-1));
+        TextView name=text(app.label,10,WHITE,true);
+        name.setSingleLine(true);name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams t=new FrameLayout.LayoutParams(-1,dp(20),Gravity.BOTTOM);
+        t.leftMargin=dp(3);t.rightMargin=dp(3);
+        tile.addView(name,t);
+        tile.setForeground(focusStroke(false));
+        tile.setOnFocusChangeListener((v,f)->{
+            tile.setForeground(focusStroke(f));
+            if(preferences.getBoolean("motion",true))
+                tile.animate().scaleX(f?1.025f:1f).scaleY(f?1.025f:1f).setDuration(100).start();
+        });
+        tile.setOnClickListener(v->{if(isYouTube(app))launchYouTube();else openDirect(app);});
+        tile.setOnLongClickListener(v->{editFavorite(app);return true;});
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);
+        lp.setMargins(0,0,dp(6),0);
+        parent.addView(tile,lp);
     }
     private TvApp lastVideoService(){
         for(TvApp app:recentApps())if(isMedia(app)&&!getHiddenIds().contains(app.pkg))return app;
