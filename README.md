@@ -97,3 +97,6 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - D-pad RIGHT from any main sidebar item targets the first focusable action in content.
 - Preserves premium dark graphite and peach visual treatment and cinematic backdrop.
 - Android 11 MiTV-MOOQ1 on-device testing still required; no direct VPN connect or media-catalog integration yet.
+
+## Screenshot-driven layout fix 1.10.2
+Actual GitHub Actions Android emulator screenshot of 1.10.1 at 1080x640 pixels revealed overlarge home app tiles and cut-off quick access controls. v1.10.2 uses compact 90dp-high tiles on the home screen only, a narrower 36%-screen-height hero, tighter section headers and paddings. The full-size grid remains available on the Apps page. Default cinematic hero is now 1024x344 instead of 480x191. A separate emulator workflow takes screenshots of the actual Android activity; compilation success alone is not UI QA.
