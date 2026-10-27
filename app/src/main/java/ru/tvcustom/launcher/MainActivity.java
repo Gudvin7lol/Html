@@ -7,6 +7,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.InputStream;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -58,6 +61,12 @@ public final class MainActivity extends Activity {
     private String searchQuery="";
     private String selectedPackage="";
     private int knownAppCount=0;
+    private boolean packageListDirty=false;
+    private final BroadcastReceiver packageUpdates = new BroadcastReceiver(){
+        @Override public void onReceive(Context context,Intent intent){
+            packageListDirty=true;
+        }
+    };
     private Bitmap customPoster;
     private static final int REQ_POSTER=439;
     private static final int REQ_EXPORT=440, REQ_IMPORT=441;
@@ -74,14 +83,23 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         refreshApps(); knownAppCount=apps.size(); build();
+        IntentFilter packages=new IntentFilter();
+        packages.addAction(Intent.ACTION_PACKAGE_ADDED);
+        packages.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        packages.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        packages.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        packages.addDataScheme("package");
+        registerReceiver(packageUpdates,packages);
     }
     @Override protected void onResume() {
         super.onResume();
         indicatorHandler.removeCallbacks(indicatorTicker);
         indicatorHandler.post(indicatorTicker);
         if(panel==null)return;
-        // Returning from a video player should not reset focus/scroll on every resume.
-        refreshApps();
+        // Rebuilding all app icons on every return from a player causes lag on low-memory TVs.
+        // Installed apps are re-queried only if a package change broadcast was received.
+        boolean updated=packageListDirty;
+        if(updated){packageListDirty=false;refreshApps();}
         if(pendingYouTube){
             boolean isFresh=android.os.SystemClock.elapsedRealtime()-vpnRequestAt<120000;
             pendingYouTube=false;
@@ -90,7 +108,7 @@ public final class MainActivity extends Activity {
                 if(target!=null){openDirect(target);return;}
             }
         }
-        if(knownAppCount!=apps.size()){
+        if(updated){
             knownAppCount=apps.size();
             render(page);
         }
@@ -98,6 +116,14 @@ public final class MainActivity extends Activity {
     @Override protected void onPause() {
         indicatorHandler.removeCallbacks(indicatorTicker);
         super.onPause();
+    }
+    @Override protected void onDestroy(){
+        indicatorHandler.removeCallbacks(indicatorTicker);
+        try{unregisterReceiver(packageUpdates);}catch(Exception ignored){}
+        if(customPoster!=null && !customPoster.isRecycled()){
+            customPoster.recycle(); customPoster=null;
+        }
+        super.onDestroy();
     }
     private void refreshIndicators() {
         if(statusClock!=null) statusClock.setText(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()));
