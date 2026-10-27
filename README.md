@@ -1,4 +1,4 @@
-# Xiaomi TV Custom — v1.3
+# Xiaomi TV Custom — v1.4
 
 ### Target
 Xiaomi MiTV-MOOQ1 · Android TV 11.
@@ -36,3 +36,11 @@ In branch xiaomi-tv-custom-build, GitHub Actions workflow \`tv-apk.yml\` builds 
 - Streamlined VPN status display, transparent handoff to v2RayTun.
 
 Note: It is an installable build, not a device-tested exact recreation of artwork in the previously approved concept. Service-specific movie posters and unattended v2RayTun start/stop require distinct integrations.
+
+## Version 1.4
+- Keeps scroll and focus intact after opening installed apps (unless app count changes).
+- Persistent favourites with left/right reordering from a long press on OK; v1.3 favourite preferences migrate.
+- Active navigation section highlighted; accessible native icon rail.
+- Safer VPN handoff, expires if not connected within 2 minutes; still no unattended VPN activation.
+- Direct shortcut to Android's Home selection settings where supported, retains Projectivy fallback.
+- GitHub Actions verifies APK signature, manifest and writes SHA-256 checksum.
