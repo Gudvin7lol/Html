@@ -199,63 +199,70 @@ public final class MainActivity extends Activity {
             view.setElevation(dp(focused?5:0));
         });
     }
+    // Nav targets differ from indices because movies, series and television are
+    // three entry points into available installed media services, not fake catalogs.
+    private static final int[] TV_NAV={0,1,8,9,2,3,5};
     private void build(){
         FrameLayout root=new FrameLayout(this);
         background=new SceneView(this);
         background.setScenic(preferences.getBoolean("scenic",true));
         root.addView(background,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout base=col();base.setPadding(dp(22),dp(12),dp(22),dp(16));
-        root.addView(base,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout top=row();
-        TextView logo=text("xiaomi TV",25,WHITE,true);
-        logo.setLetterSpacing(.055f);
-        top.addView(logo,new LinearLayout.LayoutParams(0,dp(52),1f));
-        statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),18,WHITE,false);
-        statusClock.setGravity(Gravity.CENTER);top.addView(statusClock,new LinearLayout.LayoutParams(dp(80),dp(52)));
-        statusVpn=text(vpnConnected()?"●  VPN":"○  VPN",14,vpnConnected()?0xFF89DEB2:ACCENT,true);
-        statusVpn.setGravity(Gravity.CENTER);selectable(statusVpn,SURFACE);
-        statusVpn.setOnClickListener(v->switchTo(4));
-        top.addView(statusVpn,new LinearLayout.LayoutParams(dp(101),dp(40)));
-        FrameLayout gear=new FrameLayout(this);
-        selectable(gear,SURFACE);
-        TvIcon gearIcon=new TvIcon(this,5,ACCENT);
-        gear.addView(gearIcon,new FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER));
-        gear.setContentDescription("Центр управления");
-        gear.setOnClickListener(v->toggleQuickPanel());
-        top.addView(gear,new LinearLayout.LayoutParams(dp(46),dp(40)));
-        base.addView(top,new LinearLayout.LayoutParams(-1,dp(52)));
-
         LinearLayout main=row();main.setGravity(Gravity.TOP);
-        LinearLayout side=col();side.setPadding(0,dp(16),dp(12),0);
-        main.addView(side,new LinearLayout.LayoutParams(dp(174),-1));
-        String[] pages={"Главная","Фильмы и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
-        for(int i=0;i<pages.length;i++){
-            final int destination=i;
+        main.setPadding(dp(12),dp(8),dp(10),dp(7));
+        root.addView(main,new FrameLayout.LayoutParams(-1,-1));
+
+        LinearLayout side=col();
+        side.setPadding(dp(12),dp(14),dp(11),dp(8));
+        main.addView(side,new LinearLayout.LayoutParams(dp(184),-1));
+        TextView logo=text("xiaomi TV",24,WHITE,true);
+        logo.setLetterSpacing(.09f);
+        side.addView(logo,new LinearLayout.LayoutParams(-1,dp(60)));
+        String[] menu={"Главная","Фильмы","Сериалы","ТВ","Приложения","HDMI","Настройки"};
+        int[] glyphs={0,1,1,3,2,3,5};
+        for(int i=0;i<menu.length;i++){
+            final int target=TV_NAV[i];
             LinearLayout item=row();item.setGravity(Gravity.CENTER_VERTICAL);
-            item.setPadding(dp(14),0,dp(6),0);
-            selectable(item,0xBF17212E);
-            item.setOnFocusChangeListener((v,focused)->{
-                v.setBackground(glass(destination==page?0xE43C3136:0xA117202D,focused || destination==page,13));
-            });
-            TvIcon icon=new TvIcon(this,i,ACCENT);
-            LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));
-            iconSize.rightMargin=dp(13);
-            item.addView(icon,iconSize);
-            TextView label=text(pages[i],15,WHITE,i==0);
+            item.setPadding(dp(10),0,dp(4),0);
+            item.setFocusable(true);item.setFocusableInTouchMode(false);
+            TvIcon icon=new TvIcon(this,glyphs[i],i==0?WHITE:0xFFA7C4DC);
+            LinearLayout.LayoutParams il=new LinearLayout.LayoutParams(dp(21),dp(21));
+            il.rightMargin=dp(14);item.addView(icon,il);
+            TextView label=text(menu[i],14,i==0?WHITE:0xFFB0BCCC,i==0);
             navLabels.add(label);
-            item.addView(label,new LinearLayout.LayoutParams(0,-1,1f));
-            item.setOnClickListener(v->switchTo(destination));
+            item.addView(label,new LinearLayout.LayoutParams(0,-1,1));
+            item.setContentDescription(menu[i]);
+            item.setOnClickListener(v->switchTo(target));
+            item.setOnFocusChangeListener((v,focused)->{
+                boolean active=page==target;
+                v.setBackground(navBackground(active,focused));
+                if(preferences.getBoolean("motion",true))
+                    v.animate().scaleX(focused?1.016f:1f).scaleY(focused?1.016f:1f).setDuration(100).start();
+            });
             side.addView(item,new LinearLayout.LayoutParams(-1,dp(46)));
-            gap(side,7);nav.add(item);
+            gap(side,compactNavGap());
+            nav.add(item);
         }
-        gap(side,16);
-        side.addView(text("MI TV  ·  ANDROID 11",10,0xFF8798AB,false));
+        side.addView(new View(this),new LinearLayout.LayoutParams(1,0,1));
+        TextView signature=text("MI TV  •  ANDROID 11",10,0xFF7D94AD,false);
+        side.addView(signature,new LinearLayout.LayoutParams(-1,dp(32)));
+
         panel=new FrameLayout(this);
-        main.addView(panel,new LinearLayout.LayoutParams(0,-1,1f));
-        base.addView(main,new LinearLayout.LayoutParams(-1,0,1f));
+        main.addView(panel,new LinearLayout.LayoutParams(0,-1,1));
         rootView=root;
-        setContentView(root);render(0);
+        setContentView(root);
+        render(0);
         nav.get(0).requestFocus();
+    }
+    private int compactNavGap(){return 2;}
+    private GradientDrawable navBackground(boolean active,boolean focus){
+        GradientDrawable drawable=new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            active?new int[]{0xDA563B33,0xC2252832}:
+            focus?new int[]{0xC52B3544,0xA21A2737}:new int[]{0x280A1A2D,0x0F0A1725});
+        drawable.setCornerRadius(dp(12));
+        drawable.setStroke(dp(active||focus?2:1),
+            active||focus?0xFFEFB38E:0x225A7389);
+        return drawable;
     }
     private void switchTo(int to){
         closeQuickPanel();
@@ -264,19 +271,17 @@ public final class MainActivity extends Activity {
         pendingYouTube=false;
         page=to;
         render(to);
-        if(to<nav.size())nav.get(to).requestFocus();
+        for(int i=0;i<TV_NAV.length;i++){
+            if(TV_NAV[i]==to){nav.get(i).requestFocus();break;}
+        }
     }
     private void highlightPage(){
         for(int i=0;i<nav.size();i++){
-            final boolean chosen=i==page;
-            View item=nav.get(i);
-            item.setBackground(glass(chosen?0xD1393033:0xA117202D,false,13));
-            if(i<navLabels.size()){
-                TextView label=navLabels.get(i);
-                label.setTypeface(android.graphics.Typeface.DEFAULT,
-                    chosen?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);
-                label.setTextColor(chosen?WHITE:0xFFB8C3D0);
-            }
+            boolean chosen=TV_NAV[i]==page;
+            nav.get(i).setBackground(navBackground(chosen,false));
+            TextView label=navLabels.get(i);
+            label.setTypeface(Typeface.DEFAULT,chosen?Typeface.BOLD:Typeface.NORMAL);
+            label.setTextColor(chosen?WHITE:0xFFB0BCCC);
         }
     }
     private void render(int to){
@@ -288,9 +293,11 @@ public final class MainActivity extends Activity {
         sc.setFillViewport(true);
         sc.setVerticalScrollBarEnabled(false);sc.setClipToPadding(false);
         panel.addView(sc,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout c=col();c.setPadding(dp(6),dp(9),dp(5),dp(9));sc.addView(c);
+        LinearLayout c=col();c.setPadding(dp(3),dp(1),dp(1),dp(3));sc.addView(c);
         switch(to){
           case 1: streaming(c);break;
+          case 8: streaming(c);break;
+          case 9: streaming(c);break;
           case 2: allApps(c);break;
           case 3: hdmi(c);break;
           case 4: vpnPage(c);break;
@@ -307,7 +314,8 @@ public final class MainActivity extends Activity {
     }
     private void wireRemoteFocus(int currentPage){
         View first=findFirstFocusable(panel);
-        int navPage=currentPage<nav.size()?currentPage:Math.min(lastVisitedPage,nav.size()-1);
+        int navPage=0;
+        for(int i=0;i<TV_NAV.length;i++)if(TV_NAV[i]==currentPage)navPage=i;
         if(first==null || navPage<0)return;
         View activeNav=nav.get(navPage);
         if(first.getId()==View.NO_ID)first.setId(View.generateViewId());
