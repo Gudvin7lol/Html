@@ -353,7 +353,7 @@ public final class MainActivity extends Activity {
         LinearLayout overlay=col();
         overlay.setPadding(dp(compact?18:28),dp(compact?13:20),dp(18),dp(compact?8:15));
         hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-        TextView kicker=text("ТВОЙ КИНОТЕАТР   /   XIAOMI TV CUSTOM",compact?10:11,ACCENT,true);
+        TextView kicker=text("XIAOMI TV CUSTOM   /   БЕЗ ЛИШНЕГО",compact?10:11,ACCENT,true);
         kicker.setLetterSpacing(.12f);overlay.addView(kicker);gap(overlay,compact?7:14);
         TextView headline=text("Кино начинается\nздесь.",compact?27:36,WHITE,true);
         headline.setLineSpacing(0,1.02f);overlay.addView(headline);gap(overlay,compact?4:8);
@@ -361,7 +361,7 @@ public final class MainActivity extends Activity {
         gap(overlay,compact?8:15);
         LinearLayout buttons=row();
         pill(buttons,"Смотреть",this::openBestVideo);
-        pill(buttons,"Smart VPN",this::openVpn);
+        pill(buttons,"Приложения",()->switchTo(2));
         overlay.addView(buttons);
 
         // Real, tappable indicators float over the poster on sufficiently wide TVs.
@@ -376,8 +376,8 @@ public final class MainActivity extends Activity {
         gap(c,compact?10:17);
         List<TvApp> visibleFav=favoriteApps();
         boolean pinned=!visibleFav.isEmpty();
-        sectionHead(c,pinned?"Избранное":"Рекомендуемые приложения",
-            "Удержание ОК — настроить избранное",()->switchTo(2));
+        sectionHead(c,pinned?"Избранные приложения":"Приложения",
+            "ОК — открыть  ·  удержание ОК — порядок и настройки",()->switchTo(2));
         appStrip(c,pinned?visibleFav:forHome(),10);
         gap(c,12);
         ArrayList<TvApp> recent=recentApps();
@@ -385,11 +385,11 @@ public final class MainActivity extends Activity {
             sectionHead(c,"Недавно открывали","История запуска с этого лаунчера",()->switchTo(2));
             appStrip(c,recent,7);
         }else{
-            sectionHead(c,"Быстрые настройки","Сеть, VPN и переход к другим источникам",()->switchTo(6));
+            sectionHead(c,"Быстрый доступ","Основные инструменты телевизора",()->switchTo(6));
             LinearLayout quick=row();
-            quickTile(quick,"Smart VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
+            quickTile(quick,"Приложения",apps.size()+" установлено",()->switchTo(2));
             quickTile(quick,"Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
-            quickTile(quick,"HDMI","Открыть настройки",()->switchTo(3));
+            quickTile(quick,"HDMI","Выбор источника",()->switchTo(3));
             c.addView(quick);
         }
     }
