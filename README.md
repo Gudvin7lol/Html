@@ -107,3 +107,6 @@ Actual GitHub Actions Android emulator screenshot of 1.10.1 at 1080x640 pixels r
 - Dock items show real installed app icons/banners and open those packages with the remote; long OK still manages favourites.
 - Below the stage: 90dp-high favourites rail and compact functional quick controls; recent apps only represent actual launcher launches.
 - UI screenshots now capture home, menu overlay, and app navigation through an Android emulator; no unsupported promises of actual movie continuation or v2RayTun automated connection.
+
+## 1.12.0: reference-first home rebuild
+Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer uses a separate 3x3 app dock. The hero spans full content width at the top with transparent, legible title overlay and top-right search/settings/network/clock/VPN. A seven-row permanent sidebar is placed to the left; compact (65dp) favourites and a four-wide media/services strip appear below. Media tiles link to actual installed media apps; no claims of film playback progress without provider APIs. The existing Android TV backup, diagnostic, HDMI, installed apps and v2RayTun launch remain accessible. UI screenshot QA captures multiple real application states. 1.12.0 does not directly toggle v2RayTun VPN or supply copyrighted film video.
