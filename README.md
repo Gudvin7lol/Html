@@ -80,3 +80,11 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - Static low-memory background and existing responsive application cards retained.
 - CI verifies APK signature, package identity and SHA-256.
 - Device D-pad layout and app launch still need testing on physical MiTV-MOOQ1. Never disable stock or Projectivy launcher before testing.
+
+## Version 1.9
+- Native banner-aware 16:9-ish TV cards: actual installed app banners or original procedural graphite/peach artwork. Never substitute fake streaming content.
+- Readable translucent title footer, peach outline always drawn above card content, favourite marker on pinned apps.
+- Reduced redundant VPN entry points; main hero actions are Watch and Apps, right-side real VPN card remains.
+- More compact and legible home section headings; only native Android view drawing, no heavy rendering dependencies.
+- Built for MiTV-MOOQ1 / Android TV 11, pending real-device validation.
+- GitHub Actions checks package identity, APK signature and writes SHA-256 checksum.
