@@ -71,3 +71,12 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - Device diagnostics from Android APIs: free/total storage, RAM, screen pixel resolution, Android version, network and VPN status.
 - No new background services or privileged access. The VPN handoff still requires user interaction in v2RayTun.
 - CI compiles and verifies debug-signed package and version identity, plus SHA-256.
+
+## Version 1.8
+- On-device cinematic home is more like the approved glass interface: two real action panels float over the poster on 870dp-wide or larger TVs, including compact 720p TV layouts.
+- First panel launches last used video app or offers the video section. It does NOT pretend to resume a movie.
+- Smart VPN panel shows current Android VPN transport state and opens v2RayTun for manual connection, not fake auto-toggle.
+- Improved 720p home spacing; hidden apps are no longer shown in video section and empty/hidden favourites fall back to recommended apps.
+- Static low-memory background and existing responsive application cards retained.
+- CI verifies APK signature, package identity and SHA-256.
+- Device D-pad layout and app launch still need testing on physical MiTV-MOOQ1. Never disable stock or Projectivy launcher before testing.
