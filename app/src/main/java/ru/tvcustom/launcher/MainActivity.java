@@ -368,7 +368,7 @@ public final class MainActivity extends Activity {
         // Compact 720p screens keep the artwork unobstructed.
         float screenWidth=getResources().getDisplayMetrics().widthPixels/
             getResources().getDisplayMetrics().density;
-        if(screenWidth>=880 && !compact)decorateHero(hero);
+        if(screenWidth>=870)decorateHero(hero,compact);
 
         int heroHeight=Math.min(328,Math.max(compact?222:265,(int)(screenHeight*.43f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
@@ -396,25 +396,25 @@ public final class MainActivity extends Activity {
         for(TvApp app:recentApps())if(isMedia(app)&&!getHiddenIds().contains(app.pkg))return app;
         return null;
     }
-    private void decorateHero(FrameLayout hero){
+    private void decorateHero(FrameLayout hero,boolean compact){
         LinearLayout stack=col();
         stack.setPadding(dp(4),dp(4),dp(4),dp(4));
         stack.setGravity(Gravity.CENTER_VERTICAL);
         stack.setClipChildren(false);
-        FrameLayout.LayoutParams right=new FrameLayout.LayoutParams(dp(202),dp(177),
+        FrameLayout.LayoutParams right=new FrameLayout.LayoutParams(dp(compact?169:202),dp(compact?154:177),
             Gravity.RIGHT|Gravity.CENTER_VERTICAL);
-        right.rightMargin=dp(23);
+        right.rightMargin=dp(compact?12:23);
         hero.addView(stack,right);
 
         TvApp video=lastVideoService();
         LinearLayout continueCard=col();
-        continueCard.setPadding(dp(16),dp(12),dp(12),dp(10));
+        continueCard.setPadding(dp(compact?10:16),dp(compact?7:12),dp(12),dp(6));
         selectable(continueCard,0xDA1E2631);
         TextView caption=text("НЕДАВНО ОТКРЫВАЛИ",10,ACCENT,true);
         caption.setLetterSpacing(.09f);
         continueCard.addView(caption);
         gap(continueCard,4);
-        TextView name=text(video==null?"Кино и ТВ":video.label,18,WHITE,true);
+        TextView name=text(video==null?"Кино и ТВ":video.label,compact?15:18,WHITE,true);
         name.setSingleLine(true);name.setEllipsize(TextUtils.TruncateAt.END);
         continueCard.addView(name);
         continueCard.addView(text(video==null?"Все видеоприложения":"Открыть приложение",11,MUTED,false));
@@ -423,11 +423,11 @@ public final class MainActivity extends Activity {
             else if(isYouTube(video))launchYouTube();
             else openDirect(video);
         });
-        stack.addView(continueCard,new LinearLayout.LayoutParams(-1,dp(82)));
-        gap(stack,9);
+        stack.addView(continueCard,new LinearLayout.LayoutParams(-1,dp(compact?72:82)));
+        gap(stack,compact?6:9);
 
         LinearLayout vpnCard=row();
-        vpnCard.setPadding(dp(15),0,dp(12),0);
+        vpnCard.setPadding(dp(compact?10:15),0,dp(8),0);
         selectable(vpnCard,0xDB1E2631);
         TvIcon shield=new TvIcon(this,4,vpnConnected()?0xFF83DFAF:ACCENT);
         LinearLayout.LayoutParams shieldSize=new LinearLayout.LayoutParams(dp(27),dp(27));
@@ -438,7 +438,7 @@ public final class MainActivity extends Activity {
         status.addView(text(vpnConnected()?"Подключение активно":"Открыть v2RayTun",12,WHITE,false));
         vpnCard.addView(status);
         vpnCard.setOnClickListener(v->openVpn());
-        stack.addView(vpnCard,new LinearLayout.LayoutParams(-1,dp(69)));
+        stack.addView(vpnCard,new LinearLayout.LayoutParams(-1,dp(compact?62:69)));
     }
     private void openBestVideo(){
         TvApp last=lastVideoService();
