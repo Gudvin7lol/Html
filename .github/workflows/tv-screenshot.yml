@@ -1,0 +1,54 @@
+name: Screenshot Android TV Custom UI
+on:
+  push:
+    branches: [xiaomi-tv-custom-build]
+  workflow_dispatch:
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Build APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Enable hardware virtualization
+        run: |
+          if [ -e /dev/kvm ]; then ls -la /dev/kvm; else echo "Emulator may run slowly: no /dev/kvm"; fi
+      - name: Launch actual app and capture 1080p screenshot
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          avd-name: tv-launcher-qa
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          disable-animations: true
+          script: |
+            adb shell wm size 1920x1080
+            adb shell wm density 160
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n ru.tvcustom.launcher/.MainActivity
+            sleep 12
+            adb shell screencap -p /sdcard/tv_ui.png
+            adb pull /sdcard/tv_ui.png tv_ui.png
+            adb shell dumpsys activity activities | grep -E 'Resumed|mResumedActivity' > emulator_activity.txt || true
+            adb logcat -d -s AndroidRuntime:E > android_crashes.txt || true
+            test -s tv_ui.png
+      - name: Upload screenshot and startup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XiaomiTVCustom-1.10-real-emulator-screenshot
+          path: |
+            tv_ui.png
+            emulator_activity.txt
+            android_crashes.txt
