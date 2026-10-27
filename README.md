@@ -44,3 +44,12 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - Safer VPN handoff, expires if not connected within 2 minutes; still no unattended VPN activation.
 - Direct shortcut to Android's Home selection settings where supported, retains Projectivy fallback.
 - GitHub Actions verifies APK signature, manifest and writes SHA-256 checksum.
+
+## Version 1.5 changes
+- User-facing import/export for launcher preferences via Android Storage Access Framework. JSON schema is explicitly versioned, import capped at 128 KiB, invalid files rejected, user confirmation required. No VPN profiles or passwords included.
+- Custom large/compact app cards and recently-opened row can be toggled. Both are included in backups.
+- Main "Watch" action opens last-launched video service where available, otherwise YouTube (with the existing VPN handoff) or the media section, never an arbitrary app.
+- MENU/Settings opens and closes the control centre; Back returns to the last visited screen.
+- Native vector menu icon removes another Android TV font dependency.
+- No root, no privileged HDMI operations, no unattended VPN start/stop.
+- CI builds and checks APK signing, package badging and checksum.
