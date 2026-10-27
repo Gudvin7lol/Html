@@ -88,3 +88,12 @@ Note: It is an installable build, not a device-tested exact recreation of artwor
 - More compact and legible home section headings; only native Android view drawing, no heavy rendering dependencies.
 - Built for MiTV-MOOQ1 / Android TV 11, pending real-device validation.
 - GitHub Actions checks package identity, APK signature and writes SHA-256 checksum.
+
+## Version 1.10
+- New translucent right-hand Control Center is an actual overlay over the current screen, not a page change.
+- Open and close it with MENU/SETTINGS on supported remote, or the top-right toolbar icon; BACK dismisses and restores the previous focused item.
+- Six genuine controls: Android VPN hand-off to v2RayTun, YouTube (with preflight VPN check), system Wi-Fi settings, HDMI settings, installed apps and launcher settings.
+- Optimized scrollable sidebar with large directional-pad focus surfaces and a dimming backdrop; never pretends that Wi-Fi/HDMI or VPN can be toggled without system permissions.
+- D-pad RIGHT from any main sidebar item targets the first focusable action in content.
+- Preserves premium dark graphite and peach visual treatment and cinematic backdrop.
+- Android 11 MiTV-MOOQ1 on-device testing still required; no direct VPN connect or media-catalog integration yet.
