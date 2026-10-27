@@ -376,16 +376,16 @@ public final class MainActivity extends Activity {
             getResources().getDisplayMetrics().density;
         if(screenWidth>=870)decorateHero(hero,compact);
 
-        int heroHeight=Math.min(328,Math.max(compact?222:265,(int)(screenHeight*.43f)));
+        int heroHeight=Math.min(324,Math.max(compact?218:228,(int)(screenHeight*.36f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
-        gap(c,compact?10:17);
+        gap(c,compact?8:12);
         List<TvApp> visibleFav=favoriteApps();
         boolean pinned=!visibleFav.isEmpty();
         sectionHead(c,pinned?"Избранные приложения":"Приложения",
             "ОК — открыть  ·  удержание ОК — порядок и настройки",()->switchTo(2));
         appStrip(c,pinned?visibleFav:forHome(),10);
-        gap(c,12);
+        gap(c,8);
         ArrayList<TvApp> recent=recentApps();
         if(!recent.isEmpty() && preferences.getBoolean("show_recent",true)){
             sectionHead(c,"Недавно открывали","История запуска с этого лаунчера",()->switchTo(2));
@@ -582,7 +582,7 @@ public final class MainActivity extends Activity {
         LinearLayout left=col();
         left.addView(text(title,19,WHITE,true));
         left.addView(text(subtitle,11,MUTED,false));
-        header.addView(left,new LinearLayout.LayoutParams(0,dp(47),1));
+        header.addView(left,new LinearLayout.LayoutParams(0,dp(42),1));
         TextView viewAll=text("Посмотреть все   ›",13,ACCENT,true);
         viewAll.setGravity(Gravity.CENTER);
         selectable(viewAll,0x7A202631);
@@ -1022,17 +1022,17 @@ public final class MainActivity extends Activity {
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setClipToPadding(false);scroll.setClipChildren(false);
         LinearLayout r=row();r.setPadding(dp(6),dp(6),dp(10),dp(7));r.setClipChildren(false);
-        for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i));
+        for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i),true);
         if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
         scroll.addView(r);
-        c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(tileHeight()+18)));
+        c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(90+14)));
     }
     private void appGrid(LinearLayout c,List<TvApp> list){
         int cols=columns();
         for(int i=0;i<list.size();i+=cols){
             LinearLayout r=row();r.setGravity(Gravity.CENTER_VERTICAL);
             r.setClipChildren(false);r.setPadding(dp(5),dp(5),dp(5),dp(6));
-            for(int j=i;j<Math.min(list.size(),i+cols);j++)tile(r,list.get(j));
+            for(int j=i;j<Math.min(list.size(),i+cols);j++)tile(r,list.get(j),false);
             c.addView(r,new LinearLayout.LayoutParams(-1,dp(tileHeight()+19)));
         }
     }
@@ -1054,7 +1054,7 @@ public final class MainActivity extends Activity {
         stroke.setStroke(dp(focused?3:1),focused?ACCENT:0x66566077);
         return stroke;
     }
-    private void tile(LinearLayout r,TvApp a){
+    private void tile(LinearLayout r,TvApp a,boolean compactCard){
         FrameLayout card=new FrameLayout(this);
         int tint=cardColor(a);
         card.setBackground(glass(0xEE171F2D,false,16));
@@ -1081,19 +1081,19 @@ public final class MainActivity extends Activity {
             ImageView icon=new ImageView(this);
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int iconDp=preferences.getBoolean("large_cards",true)?74:60;
+            int iconDp=compactCard?48:(preferences.getBoolean("large_cards",true)?74:60);
             FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(iconDp),dp(iconDp),Gravity.CENTER);
-            ip.bottomMargin=dp(19);
+            ip.bottomMargin=dp(compactCard?14:19);
             card.addView(icon,ip);
         }
         // Frosted-looking caption strip. Keep app name legible on both banners and icons.
         LinearLayout labelStrip=row();
-        labelStrip.setPadding(dp(10),0,dp(9),0);
+        labelStrip.setPadding(dp(compactCard?7:10),0,dp(compactCard?5:9),0);
         labelStrip.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
             new int[]{0xC6141A24,0xB018202C}));
-        FrameLayout.LayoutParams stripLp=new FrameLayout.LayoutParams(-1,dp(31),Gravity.BOTTOM);
+        FrameLayout.LayoutParams stripLp=new FrameLayout.LayoutParams(-1,dp(compactCard?24:31),Gravity.BOTTOM);
         stripLp.leftMargin=dp(1);stripLp.rightMargin=dp(1);stripLp.bottomMargin=dp(1);
-        TextView name=text(a.label,12,WHITE,true);
+        TextView name=text(a.label,compactCard?10:12,WHITE,true);
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
         labelStrip.addView(name,new LinearLayout.LayoutParams(0,-1,1f));
@@ -1115,8 +1115,12 @@ public final class MainActivity extends Activity {
             }
             card.setElevation(dp(focused?9:0));
         });
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(tileWidth()),dp(tileHeight()));
-        lp.setMargins(dp(3),0,dp(9),0);
+        float vw=getResources().getDisplayMetrics().widthPixels/
+            getResources().getDisplayMetrics().density;
+        int compactWidth=Math.max(88,Math.min(128,((int)vw-44-174-35-70)/8));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(
+            dp(compactCard?compactWidth:tileWidth()),dp(compactCard?90:tileHeight()));
+        lp.setMargins(dp(2),0,dp(compactCard?6:9),0);
         r.addView(card,lp);
         card.setOnClickListener(v->{if(isYouTube(a))launchYouTube();else openDirect(a);});
         card.setOnLongClickListener(v->{editFavorite(a);return true;});
