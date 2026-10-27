@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
     private static final int PANEL_BORDER=0x5B5B6577;
     private final ArrayList<TvApp> apps=new ArrayList<>();
     private final ArrayList<View> nav=new ArrayList<>();
+    private final ArrayList<TextView> navLabels=new ArrayList<>();
     private SharedPreferences preferences;
     private FrameLayout panel;
     private SceneView background;
@@ -52,9 +53,10 @@ public final class MainActivity extends Activity {
     };
     private int page=0;
     private boolean pendingYouTube=false;
-    private boolean initialFocus=true;
     private String appFilter="all";
     private String searchQuery="";
+    private String selectedPackage="";
+    private int knownAppCount=0;
     private Bitmap customPoster;
     private static final int REQ_POSTER=439;
 
@@ -68,19 +70,22 @@ public final class MainActivity extends Activity {
         preferences=getSharedPreferences("tv_custom",MODE_PRIVATE);
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-        refreshApps(); build();
+        refreshApps(); knownAppCount=apps.size(); build();
     }
     @Override protected void onResume() {
         super.onResume();
         indicatorHandler.removeCallbacks(indicatorTicker);
         indicatorHandler.post(indicatorTicker);
-        if(panel!=null) {
-            refreshApps();
-            if(pendingYouTube && vpnConnected()) {
-                pendingYouTube=false;
-                TvApp youtube=youtubeApp();
-                if(youtube!=null) { openDirect(youtube); return; }
-            }
+        if(panel==null)return;
+        // Returning from a video player should not reset focus/scroll on every resume.
+        refreshApps();
+        if(pendingYouTube && vpnConnected()){
+            pendingYouTube=false;
+            TvApp target=youtubeApp();
+            if(target!=null){openDirect(target);return;}
+        }
+        if(knownAppCount!=apps.size()){
+            knownAppCount=apps.size();
             render(page);
         }
     }
@@ -177,6 +182,7 @@ public final class MainActivity extends Activity {
             iconSize.rightMargin=dp(13);
             item.addView(icon,iconSize);
             TextView label=text(pages[i],15,WHITE,i==0);
+            navLabels.add(label);
             item.addView(label,new LinearLayout.LayoutParams(0,-1,1f));
             item.setOnClickListener(v->switchTo(destination));
             side.addView(item,new LinearLayout.LayoutParams(-1,dp(46)));
@@ -190,9 +196,27 @@ public final class MainActivity extends Activity {
         setContentView(root);render(0);
         nav.get(0).requestFocus();
     }
-    private void switchTo(int to){page=to;render(to);if(to<nav.size())nav.get(to).requestFocus();}
+    private void switchTo(int to){
+        page=to;
+        render(to);
+        if(to<nav.size())nav.get(to).requestFocus();
+    }
+    private void highlightPage(){
+        for(int i=0;i<nav.size();i++){
+            final boolean chosen=i==page;
+            View item=nav.get(i);
+            item.setBackground(glass(chosen?0xD1393033:0xA117202D,false,13));
+            if(i<navLabels.size()){
+                TextView label=navLabels.get(i);
+                label.setTypeface(android.graphics.Typeface.DEFAULT,
+                    chosen?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);
+                label.setTextColor(chosen?WHITE:0xFFB8C3D0);
+            }
+        }
+    }
     private void render(int to){
         if(panel==null)return;
+        highlightPage();
         panel.removeAllViews();
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
         sc.setVerticalScrollBarEnabled(false);sc.setClipToPadding(false);
