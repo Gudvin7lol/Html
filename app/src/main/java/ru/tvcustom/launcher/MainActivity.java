@@ -155,6 +155,7 @@ public final class MainActivity extends Activity {
         return super.onKeyDown(keyCode,e);
     }
     @Override public void onBackPressed() {
+        if(page==7){ switchTo(5); return; }
         if(page==6) { switchTo(lastVisitedPage); return; }
         if(page!=0) { switchTo(0); return; }
         super.onBackPressed();
@@ -256,7 +257,7 @@ public final class MainActivity extends Activity {
     }
     private void switchTo(int to){
         if(page==0 && currentScroll!=null)lastHomeScrollY=currentScroll.getScrollY();
-        if(to==6 && page!=6)lastVisitedPage=page;
+        if((to==6 || to==7) && page!=6 && page!=7)lastVisitedPage=page;
         pendingYouTube=false;
         page=to;
         render(to);
@@ -292,6 +293,7 @@ public final class MainActivity extends Activity {
           case 4: vpnPage(c);break;
           case 5: settings(c);break;
           case 6: controlCenter(c);break;
+          case 7: diagnostics(c);break;
           default:home(c);break;
         }
         wireRemoteFocus(to);
@@ -667,6 +669,42 @@ public final class MainActivity extends Activity {
         c.addView(r3);gap(c,18);
         c.addView(text("Переключатели открывают соответствующие системные настройки. Это не имитация Wi-Fi или Bluetooth.",12,MUTED,false));
     }
+    private String asGb(long bytes){
+        return String.format(Locale.getDefault(),"%.2f ГБ",bytes/1073741824.0);
+    }
+    private void diagnostics(LinearLayout c){
+        title(c,"Диагностика телевизора","Измерения непосредственно с этого Android TV");
+        android.app.ActivityManager manager=
+            (android.app.ActivityManager)getSystemService(ACTIVITY_SERVICE);
+        if(manager!=null){
+            android.app.ActivityManager.MemoryInfo info=
+                new android.app.ActivityManager.MemoryInfo();
+            manager.getMemoryInfo(info);
+            String ram=asGb(info.availMem)+" свободно из "+asGb(info.totalMem);
+            action(c,"Оперативная память (RAM)",ram,()->render(7));
+        }
+        try{
+            StatFs storage=new StatFs(getFilesDir().getPath());
+            action(c,"Внутренний накопитель",
+                asGb(storage.getAvailableBytes())+" свободно из "+asGb(storage.getTotalBytes()),
+                ()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
+        }catch(Exception ignored){}
+        android.graphics.Point size=new android.graphics.Point();
+        getWindowManager().getDefaultDisplay().getRealSize(size);
+        action(c,"Разрешение дисплея",size.x+" × "+size.y+" пикселей",
+            ()->trySettings(Settings.ACTION_DISPLAY_SETTINGS));
+        action(c,"Android",String.valueOf(android.os.Build.VERSION.RELEASE)+" · API "+
+            android.os.Build.VERSION.SDK_INT,()->trySettings(Settings.ACTION_SETTINGS));
+        action(c,"Сеть",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        action(c,"Активное VPN-соединение",vpnConnected()?"Обнаружено":"Не обнаружено",this::openVpn);
+        gap(c,11);
+        c.addView(text("Это показания Android, а не результаты теста скорости. Оперативная и постоянная память различаются.",12,MUTED,false));
+        gap(c,15);
+        LinearLayout controls=row();
+        pill(controls,"Обновить показатели",()->render(7));
+        pill(controls,"Вернуться",()->switchTo(5));
+        c.addView(controls);
+    }
     private String networkSummary(){
         try{
             ConnectivityManager m=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
@@ -697,7 +735,8 @@ public final class MainActivity extends Activity {
         action(c,"Настроить VPN","Открыть установленный клиент v2RayTun",this::openVpn);
         gap(c,16);
         c.addView(text("СИСТЕМА",12,ACCENT,true));gap(c,9);
-        action(c,"Состояние памяти",freeSpace()+" · нажми для настроек хранилища",
+        action(c,"Диагностика устройства","Память, RAM, разрешение и информация о системе",()->switchTo(7));
+        action(c,"Состояние памяти",freeSpace()+" · открыть настройки хранилища",
                ()->trySettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS));
         action(c,"Wi-Fi и Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
         action(c,"Выбор главного экрана","Вернуться к Xiaomi или Projectivy можно через настройки",
@@ -732,7 +771,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.5 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.7 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
