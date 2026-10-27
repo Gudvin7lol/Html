@@ -175,9 +175,13 @@ public final class MainActivity extends Activity {
         statusVpn.setGravity(Gravity.CENTER);selectable(statusVpn,SURFACE);
         statusVpn.setOnClickListener(v->switchTo(4));
         top.addView(statusVpn,new LinearLayout.LayoutParams(dp(101),dp(40)));
-        TextView gear=text("☷",27,ACCENT,true);
-        gear.setGravity(Gravity.CENTER);selectable(gear,SURFACE);
-        gear.setOnClickListener(v->switchTo(6));top.addView(gear,new LinearLayout.LayoutParams(dp(46),dp(40)));
+        FrameLayout gear=new FrameLayout(this);
+        selectable(gear,SURFACE);
+        TvIcon gearIcon=new TvIcon(this,5,ACCENT);
+        gear.addView(gearIcon,new FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER));
+        gear.setContentDescription("Центр управления");
+        gear.setOnClickListener(v->switchTo(6));
+        top.addView(gear,new LinearLayout.LayoutParams(dp(46),dp(40)));
         base.addView(top,new LinearLayout.LayoutParams(-1,dp(52)));
 
         LinearLayout main=row();main.setGravity(Gravity.TOP);
@@ -212,6 +216,7 @@ public final class MainActivity extends Activity {
         nav.get(0).requestFocus();
     }
     private void switchTo(int to){
+        if(to==6 && page!=6)lastVisitedPage=page;
         pendingYouTube=false;
         page=to;
         render(to);
