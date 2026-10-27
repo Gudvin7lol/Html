@@ -289,7 +289,14 @@ public final class MainActivity extends Activity {
     private Bitmap loadPoster(){
         if(customPoster!=null)return customPoster;
         String saved=preferences.getString("hero_poster","");
-        if(saved.isEmpty())return null;
+        if(saved.isEmpty()){
+            try(java.io.InputStream in=getAssets().open("hero.webp")){
+                android.graphics.BitmapFactory.Options options=new android.graphics.BitmapFactory.Options();
+                options.inPreferredConfig=android.graphics.Bitmap.Config.RGB_565;
+                customPoster=android.graphics.BitmapFactory.decodeStream(in,null,options);
+            }catch(Exception ignored){}
+            return customPoster;
+        }
         try{
             Uri uri=Uri.parse(saved);
             BitmapFactory.Options meta=new BitmapFactory.Options();
@@ -485,7 +492,7 @@ public final class MainActivity extends Activity {
         title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
         c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
         action(c,"Постер главного экрана","Выбрать свою кинематографическую картинку",this::pickPoster);
-        action(c,"Сбросить постер","Вернуть стандартный фон",()->{
+        action(c,"Сбросить постер","Вернуть встроенный кинематографический фон",()->{
             customPoster=null;preferences.edit().remove("hero_poster").apply();render(5);
         });
         setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
