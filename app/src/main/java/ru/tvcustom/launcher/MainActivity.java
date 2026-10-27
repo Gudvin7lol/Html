@@ -376,7 +376,7 @@ public final class MainActivity extends Activity {
             getResources().getDisplayMetrics().density;
         if(screenWidth>=870)decorateHero(hero,compact);
 
-        int heroHeight=Math.min(324,Math.max(compact?218:228,(int)(screenHeight*.36f)));
+        int heroHeight=Math.min(326,Math.max(compact?234:255,(int)(screenHeight*.40f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
         gap(c,compact?8:12);
