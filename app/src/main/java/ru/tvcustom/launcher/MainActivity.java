@@ -373,11 +373,12 @@ public final class MainActivity extends Activity {
         int heroHeight=Math.min(328,Math.max(compact?222:265,(int)(screenHeight*.43f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
-        gap(c,17);
-        boolean pinned=!getFavoriteIds().isEmpty();
+        gap(c,compact?10:17);
+        List<TvApp> visibleFav=favoriteApps();
+        boolean pinned=!visibleFav.isEmpty();
         sectionHead(c,pinned?"Избранное":"Рекомендуемые приложения",
             "Удержание ОК — настроить избранное",()->switchTo(2));
-        appStrip(c,pinned?favoriteApps():forHome(),10);
+        appStrip(c,pinned?visibleFav:forHome(),10);
         gap(c,12);
         ArrayList<TvApp> recent=recentApps();
         if(!recent.isEmpty() && preferences.getBoolean("show_recent",true)){
@@ -584,10 +585,11 @@ public final class MainActivity extends Activity {
         c.addView(header);gap(c,7);
     }
     private void streaming(LinearLayout c){
-        title(c,"Кино и ТВ","Твои приложения для просмотра. Никакой рекламной ленты.");
+        title(c,"Кино и ТВ","Установленные видеосервисы без рекламной ленты.");
         ArrayList<TvApp> stream=new ArrayList<>();
         for(TvApp a:apps){
             String x=a.label.toLowerCase(Locale.ROOT);
+            if(getHiddenIds().contains(a.pkg))continue;
             if(x.contains("youtube")||x.contains("ivi")||x.contains("иви")||x.contains("кино")||
                x.contains("okko")||x.contains("окко")||x.contains("wink")||x.contains("видео")||
                x.contains("zona")||x.contains("зона")||x.contains("netflix")||x.contains("tv+")||
