@@ -39,6 +39,7 @@ import java.text.SimpleDateFormat;
 public final class MainActivity extends Activity {
     private static final int ACCENT=0xFFF1AF91, WHITE=0xFFF1F3F6, MUTED=0xFFABB7C5;
     private static final int SURFACE=0xE8202631, SURFACE2=0xF1222C39;
+    private static final int PANEL_BORDER=0x5B5B6577;
     private final ArrayList<TvApp> apps=new ArrayList<>();
     private final ArrayList<TextView> nav=new ArrayList<>();
     private SharedPreferences preferences;
@@ -116,15 +117,23 @@ public final class MainActivity extends Activity {
         if(outlined)d.setStroke(dp(2),ACCENT);return d;
     }
     private void gap(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
+    private GradientDrawable glass(int color,boolean focus,int radius) {
+        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            focus ? new int[]{0xF34D3633,0xF5323540} : new int[]{color,0xF1141B27});
+        d.setCornerRadius(dp(radius));
+        d.setStroke(dp(focus?2:1),focus?ACCENT:PANEL_BORDER);
+        return d;
+    }
     private void selectable(View v,int color) {
         v.setFocusable(true);v.setFocusableInTouchMode(false);
-        v.setBackground(bg(color,false,14));
+        v.setBackground(glass(color,false,13));
         v.setOnFocusChangeListener((view,focused)->{
-            view.setBackground(bg(focused?0xF23A3335:color,focused,14));
+            view.setBackground(glass(color,focused,13));
             if(preferences.getBoolean("motion",true)) {
-                view.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f).setDuration(110).start();
-            } else {view.setScaleX(1f);view.setScaleY(1f);}
-            view.setElevation(dp(focused?7:0));
+                view.animate().scaleX(focused?1.025f:1f).scaleY(focused?1.025f:1f)
+                    .setDuration(110).start();
+            }else{view.setScaleX(1f);view.setScaleY(1f);}
+            view.setElevation(dp(focused?5:0));
         });
     }
     private void build(){
@@ -132,37 +141,38 @@ public final class MainActivity extends Activity {
         background=new SceneView(this);
         background.setScenic(preferences.getBoolean("scenic",true));
         root.addView(background,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout base=col();base.setPadding(dp(32),dp(18),dp(32),dp(22));
+        LinearLayout base=col();base.setPadding(dp(22),dp(12),dp(22),dp(16));
         root.addView(base,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout top=row();
-        TextView logo=text("xiaomi TV",24,WHITE,true);
+        TextView logo=text("xiaomi TV",25,WHITE,true);
+        logo.setLetterSpacing(.055f);
         top.addView(logo,new LinearLayout.LayoutParams(0,dp(52),1f));
-        statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),19,WHITE,false);
+        statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),18,WHITE,false);
         statusClock.setGravity(Gravity.CENTER);top.addView(statusClock,new LinearLayout.LayoutParams(dp(80),dp(52)));
-        statusVpn=text(vpnConnected()?"●  VPN":"○  VPN",16,vpnConnected()?0xFF89DEB2:ACCENT,true);
+        statusVpn=text(vpnConnected()?"●  VPN":"○  VPN",14,vpnConnected()?0xFF89DEB2:ACCENT,true);
         statusVpn.setGravity(Gravity.CENTER);selectable(statusVpn,SURFACE);
         statusVpn.setOnClickListener(v->switchTo(4));
-        top.addView(statusVpn,new LinearLayout.LayoutParams(dp(102),dp(45)));
+        top.addView(statusVpn,new LinearLayout.LayoutParams(dp(101),dp(40)));
         TextView gear=text("☷",27,ACCENT,true);
         gear.setGravity(Gravity.CENTER);selectable(gear,SURFACE);
-        gear.setOnClickListener(v->switchTo(6));top.addView(gear,new LinearLayout.LayoutParams(dp(54),dp(45)));
-        base.addView(top,new LinearLayout.LayoutParams(-1,dp(58)));
+        gear.setOnClickListener(v->switchTo(6));top.addView(gear,new LinearLayout.LayoutParams(dp(46),dp(40)));
+        base.addView(top,new LinearLayout.LayoutParams(-1,dp(52)));
 
         LinearLayout main=row();main.setGravity(Gravity.TOP);
-        LinearLayout side=col();side.setPadding(0,dp(24),dp(14),0);
-        main.addView(side,new LinearLayout.LayoutParams(dp(194),-1));
+        LinearLayout side=col();side.setPadding(0,dp(16),dp(12),0);
+        main.addView(side,new LinearLayout.LayoutParams(dp(174),-1));
         String[] pages={"Главная","Фильмы и ТВ","Приложения","HDMI","Smart VPN","Настройки"};
         String[] icons={"⌂","▣","▦","▭","◇","⚙"};
         for(int i=0;i<pages.length;i++){
             final int n=i;
-            TextView item=text(icons[i]+"   "+pages[i],17,WHITE,i==0);
-            item.setPadding(dp(14),0,dp(4),0);selectable(item,0x55202631);
+            TextView item=text(icons[i]+"    "+pages[i],15,WHITE,i==0);
+            item.setPadding(dp(11),0,dp(4),0);selectable(item,0x84202631);
             item.setOnClickListener(v->switchTo(n));
-            side.addView(item,new LinearLayout.LayoutParams(-1,dp(50)));
-            gap(side,8);nav.add(item);
+            side.addView(item,new LinearLayout.LayoutParams(-1,dp(46)));
+            gap(side,6);nav.add(item);
         }
         gap(side,16);
-        side.addView(text("ANDROID TV 11",12,0xFF8798AB,false));
+        side.addView(text("MI TV  ·  ANDROID 11",10,0xFF8798AB,false));
         panel=new FrameLayout(this);
         main.addView(panel,new LinearLayout.LayoutParams(0,-1,1f));
         base.addView(main,new LinearLayout.LayoutParams(-1,0,1f));
@@ -176,7 +186,7 @@ public final class MainActivity extends Activity {
         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);
         sc.setVerticalScrollBarEnabled(false);sc.setClipToPadding(false);
         panel.addView(sc,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout c=col();c.setPadding(dp(7),dp(17),dp(8),dp(12));sc.addView(c);
+        LinearLayout c=col();c.setPadding(dp(6),dp(9),dp(5),dp(9));sc.addView(c);
         switch(to){
           case 1: streaming(c);break;
           case 2: allApps(c);break;
@@ -526,14 +536,14 @@ public final class MainActivity extends Activity {
     private int tileWidth(){
         float width=getResources().getDisplayMetrics().widthPixels/
                 getResources().getDisplayMetrics().density;
-        int available=(int)width-64-194-44;
+        int available=(int)width-44-174-35;
         int cols=Math.max(2,Math.min(5,available/165));
         return Math.max(120,Math.min(180,(available-12)/cols-11));
     }
     private int columns(){
         float width=getResources().getDisplayMetrics().widthPixels/
                 getResources().getDisplayMetrics().density;
-        return Math.max(2,Math.min(5,((int)width-64-194-44)/165));
+        return Math.max(2,Math.min(5,((int)width-44-174-35)/165));
     }
     private void appGrid(LinearLayout c,List<TvApp> list){
         int cols=columns();
