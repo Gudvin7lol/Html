@@ -117,3 +117,9 @@ Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer 
 - Media service cards without a native Android TV banner reuse varied crops of the installed hero artwork; this uses one shared Bitmap and no copied poster buffers.
 - Card taps launch installed apps only. They are **not** fabricated "Continue watching" progress, movies or show seasons from streaming services.
 - v2RayTun remains an explicit app handoff without unsupported unattended VPN control. Real device and screenshot QA remain required.
+
+## Version 1.13.2
+- Replaces over-dark original 1024x344 wallpaper with an embedded warm space/portrait cinematic artwork; source used to generate smaller WebP was not a TV network resource.
+- Uses cinematic artwork for one media tile only; other installed app/shortcuts render visibly different warm, blue and emerald gradient scenes instead of repeating one poster four times.
+- App labels remain truthful: installed providers are launchable, but no fabricated show posters, playback progress or unattended v2RayTun toggling.
+- Editable main feature title/caption can be restored from backup.
