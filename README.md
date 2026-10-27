@@ -110,3 +110,10 @@ Actual GitHub Actions Android emulator screenshot of 1.10.1 at 1080x640 pixels r
 
 ## 1.12.0: reference-first home rebuild
 Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer uses a separate 3x3 app dock. The hero spans full content width at the top with transparent, legible title overlay and top-right search/settings/network/clock/VPN. A seven-row permanent sidebar is placed to the left; compact (65dp) favourites and a four-wide media/services strip appear below. Media tiles link to actual installed media apps; no claims of film playback progress without provider APIs. The existing Android TV backup, diagnostic, HDMI, installed apps and v2RayTun launch remain accessible. UI screenshot QA captures multiple real application states. 1.12.0 does not directly toggle v2RayTun VPN or supply copyrighted film video.
+
+## Version 1.13.0
+- Customisable cinematic home headline and subtitle are editable in Settings and included in export/import JSON backups.
+- Less-darkened full-bleed cinema hero, gradient peach action, and native solid-colour app buttons.
+- Media service cards without a native Android TV banner reuse varied crops of the installed hero artwork; this uses one shared Bitmap and no copied poster buffers.
+- Card taps launch installed apps only. They are **not** fabricated "Continue watching" progress, movies or show seasons from streaming services.
+- v2RayTun remains an explicit app handoff without unsupported unattended VPN control. Real device and screenshot QA remain required.
