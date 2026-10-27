@@ -506,7 +506,15 @@ public final class MainActivity extends Activity {
             final String id=ids[i];
             TextView t=text(labels[i],13,id.equals(appFilter)?0xFF101319:WHITE,true);
             t.setGravity(Gravity.CENTER);t.setPadding(dp(10),0,dp(10),0);
-            selectable(t,id.equals(appFilter)?ACCENT:SURFACE);
+            if(id.equals(appFilter)){
+                t.setBackground(bg(ACCENT,false,12));
+                t.setOnFocusChangeListener((v,focus)->{
+                    t.setBackground(bg(focus?0xFFFFC9AF:ACCENT,false,12));
+                    t.setScaleX(focus?1.03f:1f);
+                    t.setScaleY(focus?1.03f:1f);
+                });
+                t.setFocusable(true);t.setFocusableInTouchMode(false);
+            }else selectable(t,SURFACE);
             t.setOnClickListener(v->{
                 if(id.equals("search")){showSearch();return;}
                 appFilter=id;searchQuery="";render(2);
@@ -655,8 +663,21 @@ public final class MainActivity extends Activity {
         action(c,"Экспорт настроек","Избранное, порядок и параметры в JSON",this::exportSettings);
         action(c,"Импорт настроек","Восстановить ранее сохранённую конфигурацию",this::importSettings);
         gap(c,16);
-        action(c,"Показать скрытые приложения","Изменить список программ, убранных из главного меню",()->{
+        action(c,"Показать скрытые приложения",
+            getHiddenIds().size()+" скрыто · здесь можно вернуть их обратно",()->{
             appFilter="hidden";searchQuery="";switchTo(2);
+        });
+        action(c,"Вернуть все скрытые приложения","Не удаляет данные или программы",()->{
+            if(getHiddenIds().isEmpty()){
+                Toast.makeText(this,"Скрытых программ нет",Toast.LENGTH_SHORT).show();return;
+            }
+            new AlertDialog.Builder(this).setTitle("Показать все приложения?")
+                .setMessage("Все ранее скрытые программы появятся в лаунчере.")
+                .setNegativeButton("Отмена",null)
+                .setPositiveButton("Показать",(d,w)->{
+                    preferences.edit().remove("hidden_packages").apply();
+                    render(page);
+                }).show();
         });
         action(c,"Сбросить порядок избранного","Не удаляет установленные приложения",()->{
             new AlertDialog.Builder(this).setTitle("Очистить избранное?")
