@@ -118,8 +118,13 @@ public final class MainActivity extends Activity {
     }
     private void gap(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
     private GradientDrawable glass(int color,boolean focus,int radius) {
-        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-            focus ? new int[]{0xF34D3633,0xF5323540} : new int[]{color,0xF1141B27});
+        int[] stops;
+        if(color==0xFFF0F2F6) {
+            stops=focus?new int[]{0xFFFFFFFF,0xFFE4E9F2}:new int[]{0xFFFAFBFE,0xFFE4E9EF};
+        }else{
+            stops=focus?new int[]{0xF34D3633,0xF5323540}:new int[]{color,0xF1141B27};
+        }
+        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,stops);
         d.setCornerRadius(dp(radius));
         d.setStroke(dp(focus?2:1),focus?ACCENT:PANEL_BORDER);
         return d;
@@ -204,7 +209,7 @@ public final class MainActivity extends Activity {
     }
     private void home(LinearLayout c){
         FrameLayout hero=new FrameLayout(this);
-        hero.setBackground(bg(0xEB161D28,false,18));
+        hero.setBackground(glass(0xE817202D,false,20));
         hero.setClipToOutline(true);
         Bitmap poster=loadPoster();
         if(poster!=null){
@@ -217,38 +222,43 @@ public final class MainActivity extends Activity {
         }
         View shade=new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-              new int[]{0xFB0B111D,0xE40C1420,0x96141A24,0x10000000}));
+            new int[]{0xF708101C,0xEF0B1320,0x9C101625,0x09000000},
+            new float[]{0f,.29f,.62f,1f}));
         hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
 
         LinearLayout overlay=col();
-        overlay.setPadding(dp(28),dp(24),dp(14),dp(10));
+        overlay.setPadding(dp(28),dp(20),dp(18),dp(15));
         hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-        TextView tag=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",12,ACCENT,true);
-        tag.setLetterSpacing(.11f);overlay.addView(tag);gap(overlay,14);
-        overlay.addView(text("Кино начинается\nздесь",34,WHITE,true));gap(overlay,8);
-        overlay.addView(text("Твои приложения, фильмы и каналы.\nНикаких рекламных рекомендаций.",14,0xFFD4DCE7,false));gap(overlay,17);
+        TextView kicker=text("ТВОЙ КИНОТЕАТР   /   XIAOMI TV CUSTOM",11,ACCENT,true);
+        kicker.setLetterSpacing(.12f);overlay.addView(kicker);gap(overlay,14);
+        TextView headline=text("Кино начинается\nздесь.",36,WHITE,true);
+        headline.setLineSpacing(0,1.02f);overlay.addView(headline);gap(overlay,8);
+        overlay.addView(text("Фильмы, сериалы и любимые приложения.\nВсё под рукой, без рекламы в меню.",14,0xFFD5DBE5,false));
+        gap(overlay,15);
         LinearLayout buttons=row();
         pill(buttons,"▶  Смотреть",this::openBestVideo);
-        pill(buttons,"◆  VPN",this::openVpn);
+        pill(buttons,"◇  Smart VPN",this::openVpn);
         overlay.addView(buttons);
+
         int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
             getResources().getDisplayMetrics().density);
-        int heroHeight=Math.min(310,Math.max(220,(int)(screenHeight*.39f)));
+        int heroHeight=Math.min(330,Math.max(238,(int)(screenHeight*.43f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
-        gap(c,15);
-        sectionHead(c,"Мои приложения","Долгое нажатие ОК — добавить в избранное",()->switchTo(2));
-        appStrip(c,forHome(),9);
-        ArrayList<TvApp> recent=recentApps();
+
+        gap(c,17);
+        sectionHead(c,"Избранные приложения","ОК — открыть   ·   удержание ОК — в избранное",()->switchTo(2));
+        appStrip(c,forHome(),10);
         gap(c,12);
+        ArrayList<TvApp> recent=recentApps();
         if(!recent.isEmpty()){
-            sectionHead(c,"Недавно открытые","Запущенные с нашего главного экрана программы",()->switchTo(2));
-            appStrip(c,recent,6);
+            sectionHead(c,"Недавно открывали","История запуска с этого лаунчера",()->switchTo(2));
+            appStrip(c,recent,7);
         }else{
-            sectionHead(c,"Быстрый доступ","Реальные действия, без имитации системных кнопок",()->switchTo(6));
+            sectionHead(c,"Быстрые настройки","Сеть, VPN и переход к другим источникам",()->switchTo(6));
             LinearLayout quick=row();
-            quickTile(quick,"◆  VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
-            quickTile(quick,"▦  Приложения",apps.size()+" установлено",()->switchTo(2));
-            quickTile(quick,"▭  HDMI","Настройки входов",()->switchTo(3));
+            quickTile(quick,"◆  Smart VPN",vpnConnected()?"Подключён":"Открыть v2RayTun",this::openVpn);
+            quickTile(quick,"◉  Интернет",networkSummary(),()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+            quickTile(quick,"▭  HDMI","Открыть настройки",()->switchTo(3));
             c.addView(quick);
         }
     }
@@ -314,14 +324,14 @@ public final class MainActivity extends Activity {
     private void sectionHead(LinearLayout c,String title,String subtitle,Runnable action){
         LinearLayout header=row();
         LinearLayout left=col();
-        left.addView(text(title,20,WHITE,true));
-        left.addView(text(subtitle,12,MUTED,false));
-        header.addView(left,new LinearLayout.LayoutParams(0,dp(51),1));
-        TextView viewAll=text("Все   ›",14,ACCENT,true);
+        left.addView(text(title,19,WHITE,true));
+        left.addView(text(subtitle,11,MUTED,false));
+        header.addView(left,new LinearLayout.LayoutParams(0,dp(47),1));
+        TextView viewAll=text("Посмотреть все   ›",13,ACCENT,true);
         viewAll.setGravity(Gravity.CENTER);
         selectable(viewAll,0x7A202631);
         viewAll.setOnClickListener(v->action.run());
-        header.addView(viewAll,new LinearLayout.LayoutParams(dp(78),dp(39)));
+        header.addView(viewAll,new LinearLayout.LayoutParams(dp(150),dp(38)));
         c.addView(header);gap(c,7);
     }
     private void streaming(LinearLayout c){
@@ -531,7 +541,7 @@ public final class MainActivity extends Activity {
         LinearLayout r=row();r.setPadding(dp(5),dp(5),dp(8),dp(5));r.setClipChildren(false);
         for(int i=0;i<Math.min(max,list.size());i++)tile(r,list.get(i));
         if(list.isEmpty())r.addView(text("Установленные приложения не найдены",15,MUTED,false));
-        scroll.addView(r);c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(139)));
+        scroll.addView(r);c.addView(scroll,new LinearLayout.LayoutParams(-1,dp(134)));
     }
     private int tileWidth(){
         float width=getResources().getDisplayMetrics().widthPixels/
@@ -584,7 +594,7 @@ public final class MainActivity extends Activity {
             icon.setImageDrawable(a.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
             FrameLayout.LayoutParams ip=new FrameLayout.LayoutParams(dp(64),dp(62),Gravity.CENTER);
-            ip.bottomMargin=dp(15);
+            ip.bottomMargin=dp(12);
             tile.addView(icon,ip);
         }
         boolean light=base==0xFFF0F2F6 && a.banner==null;
