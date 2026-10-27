@@ -63,6 +63,8 @@ public final class MainActivity extends Activity {
     private int knownAppCount=0;
     private boolean recentNeedsRefresh=false;
     private View rootView;
+    private FrameLayout quickOverlay;
+    private View focusBeforeOverlay;
     private ScrollView currentScroll;
     private int lastHomeScrollY=0;
     private boolean packageListDirty=false;
@@ -148,13 +150,13 @@ public final class MainActivity extends Activity {
     @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
         if((keyCode==KeyEvent.KEYCODE_MENU || keyCode==KeyEvent.KEYCODE_SETTINGS)
             && e.getRepeatCount()==0) {
-            if(page!=6){lastVisitedPage=page; switchTo(6);}
-            else switchTo(lastVisitedPage);
+            toggleQuickPanel();
             return true;
         }
         return super.onKeyDown(keyCode,e);
     }
     @Override public void onBackPressed() {
+        if(quickOverlay!=null){ closeQuickPanel();return; }
         if(page==7){ switchTo(5); return; }
         if(page==6) { switchTo(lastVisitedPage); return; }
         if(page!=0) { switchTo(0); return; }
@@ -219,7 +221,7 @@ public final class MainActivity extends Activity {
         TvIcon gearIcon=new TvIcon(this,5,ACCENT);
         gear.addView(gearIcon,new FrameLayout.LayoutParams(dp(22),dp(22),Gravity.CENTER));
         gear.setContentDescription("Центр управления");
-        gear.setOnClickListener(v->switchTo(6));
+        gear.setOnClickListener(v->toggleQuickPanel());
         top.addView(gear,new LinearLayout.LayoutParams(dp(46),dp(40)));
         base.addView(top,new LinearLayout.LayoutParams(-1,dp(52)));
 
@@ -256,6 +258,7 @@ public final class MainActivity extends Activity {
         nav.get(0).requestFocus();
     }
     private void switchTo(int to){
+        closeQuickPanel();
         if(page==0 && currentScroll!=null)lastHomeScrollY=currentScroll.getScrollY();
         if((to==6 || to==7) && page!=6 && page!=7)lastVisitedPage=page;
         pendingYouTube=false;
@@ -309,7 +312,10 @@ public final class MainActivity extends Activity {
         View activeNav=nav.get(navPage);
         if(first.getId()==View.NO_ID)first.setId(View.generateViewId());
         if(activeNav.getId()==View.NO_ID)activeNav.setId(View.generateViewId());
-        activeNav.setNextFocusRightId(first.getId());
+        for(View n:nav){
+            if(n.getId()==View.NO_ID)n.setId(View.generateViewId());
+            n.setNextFocusRightId(first.getId());
+        }
         // Left from the first content control returns to the active section.
         first.setNextFocusLeftId(activeNav.getId());
     }
@@ -701,6 +707,106 @@ public final class MainActivity extends Activity {
         });
         c.addView(panel);gap(c,16);
         c.addView(text("В этой сборке прямое автоматическое включение туннеля не реализовано. Лаунчер не меняет и не удаляет VPN-профили.",12,MUTED,false));
+    }
+    private void toggleQuickPanel(){
+        if(quickOverlay!=null){closeQuickPanel();return;}
+        openQuickPanel();
+    }
+    private void closeQuickPanel(){
+        if(quickOverlay==null)return;
+        FrameLayout overlay=quickOverlay;
+        quickOverlay=null;
+        if(overlay.getParent() instanceof ViewGroup)
+            ((ViewGroup)overlay.getParent()).removeView(overlay);
+        if(focusBeforeOverlay!=null && focusBeforeOverlay.isAttachedToWindow()){
+            View restore=focusBeforeOverlay;
+            restore.post(restore::requestFocus);
+        }
+        focusBeforeOverlay=null;
+    }
+    private void quickPanelAction(LinearLayout into,int iconId,String heading,
+                                  String description,Runnable task){
+        LinearLayout item=row();
+        item.setPadding(dp(16),0,dp(12),0);
+        selectable(item,0xD01E2734);
+        item.setContentDescription(heading+": "+description);
+        TvIcon symbol=new TvIcon(this,iconId,ACCENT);
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(24),dp(24));
+        ip.rightMargin=dp(14);item.addView(symbol,ip);
+        LinearLayout labels=col();
+        TextView name=text(heading,15,WHITE,true);labels.addView(name);
+        TextView info=text(description,11,MUTED,false);
+        info.setSingleLine(true);info.setEllipsize(TextUtils.TruncateAt.END);
+        labels.addView(info);
+        item.addView(labels,new LinearLayout.LayoutParams(0,-2,1f));
+        item.setOnClickListener(v->{closeQuickPanel();task.run();});
+        into.addView(item,new LinearLayout.LayoutParams(-1,dp(64)));
+        gap(into,8);
+    }
+    private void openQuickPanel(){
+        if(rootView==null || quickOverlay!=null)return;
+        focusBeforeOverlay=getCurrentFocus();
+        FrameLayout root=(FrameLayout)rootView;
+        FrameLayout layer=new FrameLayout(this);
+        quickOverlay=layer;
+        layer.setClickable(true);
+        layer.setFocusable(false);
+        View dim=new View(this);
+        dim.setBackgroundColor(0xB20A0F18);
+        dim.setOnClickListener(v->closeQuickPanel());
+        layer.addView(dim,new FrameLayout.LayoutParams(-1,-1));
+
+        LinearLayout surface=col();
+        surface.setPadding(dp(20),dp(18),dp(20),dp(15));
+        surface.setBackground(glass(0xF5232A36,false,22));
+        surface.setClipToOutline(true);
+        int screen=(int)(getResources().getDisplayMetrics().widthPixels /
+            getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(
+            dp(Math.min(380,Math.max(278,(int)(screen*.35f)))),-1,
+            Gravity.RIGHT|Gravity.TOP);
+        lp.setMargins(0,dp(7),dp(8),dp(7));
+        layer.addView(surface,lp);
+
+        LinearLayout header=row();
+        LinearLayout titles=col();
+        TextView top=text("ЦЕНТР УПРАВЛЕНИЯ",12,ACCENT,true);
+        top.setLetterSpacing(.11f);titles.addView(top);gap(titles,5);
+        titles.addView(text("Быстрые действия",23,WHITE,true));
+        header.addView(titles,new LinearLayout.LayoutParams(0,dp(66),1f));
+        FrameLayout close=new FrameLayout(this);
+        selectable(close,0xE52A3545);
+        TvIcon cross=new TvIcon(this,5,ACCENT);
+        close.addView(cross,new FrameLayout.LayoutParams(dp(21),dp(21),Gravity.CENTER));
+        close.setContentDescription("Закрыть центр управления");
+        close.setOnClickListener(v->closeQuickPanel());
+        header.addView(close,new LinearLayout.LayoutParams(dp(44),dp(42)));
+        surface.addView(header);gap(surface,12);
+
+        // Scroll makes the panel usable on small Android TV displays too.
+        ScrollView sc=new ScrollView(this);
+        sc.setFillViewport(false);
+        sc.setVerticalScrollBarEnabled(false);
+        LinearLayout actions=col();actions.setPadding(dp(2),dp(3),dp(2),dp(5));
+        sc.addView(actions);
+        surface.addView(sc,new LinearLayout.LayoutParams(-1,0,1f));
+        quickPanelAction(actions,4,"Smart VPN",vpnConnected()?"VPN подключён":"Открыть v2RayTun",this::openVpn);
+        quickPanelAction(actions,8,"YouTube","Запуск с проверкой VPN",this::launchYouTube);
+        quickPanelAction(actions,6,"Интернет",networkSummary(),
+            ()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        quickPanelAction(actions,3,"HDMI","Системное меню источников",()->switchTo(3));
+        quickPanelAction(actions,2,"Приложения","Все установленные программы",()->switchTo(2));
+        quickPanelAction(actions,5,"Настройки лаунчера","Оформление и резервная копия",()->switchTo(5));
+
+        TextView foot=text("MENU — закрыть  ·  ОК — выбрать  ·  Назад — выйти",
+            11,MUTED,false);
+        foot.setGravity(Gravity.CENTER);
+        surface.addView(foot,new LinearLayout.LayoutParams(-1,dp(39)));
+        root.addView(layer,new FrameLayout.LayoutParams(-1,-1));
+
+        // Focus the first actionable surface. No focus escapes to hidden screen.
+        View first=findFirstFocusable(sc);
+        if(first!=null)first.post(first::requestFocus);
     }
     private void controlCenter(LinearLayout c){
         title(c,"Центр управления","Быстрые команды с пульта · меню открывается кнопкой MENU");
