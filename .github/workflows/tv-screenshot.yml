@@ -45,6 +45,8 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -n ru.tvcustom.launcher/.MainActivity
             sleep 12
+            adb shell uiautomator dump /sdcard/window.xml || true
+            adb pull /sdcard/window.xml window.xml || true
             adb shell screencap -p /sdcard/tv_home.png
             adb pull /sdcard/tv_home.png tv_home.png
             adb shell input keyevent 82
@@ -70,9 +72,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.12.0-real-emulator-screenshots
+          name: XiaomiTVCustom-1.13.0-real-emulator-screenshots
           path: |
             tv_home.png
+            window.xml
             tv_controls.png
             tv_apps.png
             emulator_activity.txt
