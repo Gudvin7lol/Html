@@ -143,8 +143,8 @@ public final class MainActivity extends Activity {
         if(statusClock!=null) statusClock.setText(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()));
         if(statusVpn!=null) {
             boolean on=vpnConnected();
-            statusVpn.setText(on?"●  VPN":"○  VPN");
-            statusVpn.setTextColor(on?0xFF89DEB2:ACCENT);
+            statusVpn.setText(on?"VPN включён":"VPN отключён");
+            statusVpn.setTextColor(on?0xFF8CE5B4:WHITE);
         }
     }
     @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
@@ -344,77 +344,176 @@ public final class MainActivity extends Activity {
         gap(parent,16);
     }
     private void home(LinearLayout c){
-        float screenWidth=getResources().getDisplayMetrics().widthPixels/
+        float sh=getResources().getDisplayMetrics().heightPixels/
             getResources().getDisplayMetrics().density;
-        float screenHeight=getResources().getDisplayMetrics().heightPixels/
+        float sw=getResources().getDisplayMetrics().widthPixels/
             getResources().getDisplayMetrics().density;
-        boolean compact=screenHeight<700;
-        boolean wide=screenWidth>=980;
-        // The approved concept uses a cinematic feature and a separate dock of apps.
-        LinearLayout stage=row();stage.setGravity(Gravity.TOP);
+        boolean compact=sh<690;
         FrameLayout hero=new FrameLayout(this);
-        hero.setBackground(glass(0xF215202E,false,18));
+        hero.setBackground(glass(0xFA0C1421,false,17));
         hero.setClipToOutline(true);
         Bitmap poster=loadPoster();
         if(poster!=null){
-            ImageView bgImage=new ImageView(this);
-            bgImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            bgImage.setImageBitmap(poster);
-            hero.addView(bgImage,new FrameLayout.LayoutParams(-1,-1));
+            ImageView bg=new ImageView(this);
+            bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            bg.setImageBitmap(poster);
+            hero.addView(bg,new FrameLayout.LayoutParams(-1,-1));
         }else hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
-        View shade=new View(this);
-        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[]{0xF50B121F,0xD90D1725,0x4B0D121D,0x06000000}));
-        hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+        View gradient=new View(this);
+        gradient.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{0xF60A111E,0xE6081120,0xAF0B1120,0x1A08101B}));
+        hero.addView(gradient,new FrameLayout.LayoutParams(-1,-1));
 
-        LinearLayout overlay=col();
-        overlay.setPadding(dp(compact?17:26),dp(compact?17:25),dp(14),dp(10));
-        hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-        TextView kicker=text("XIAOMI TV  /  ТВОЙ КИНОТЕАТР",compact?10:11,ACCENT,true);
-        kicker.setLetterSpacing(.16f);overlay.addView(kicker);gap(overlay,compact?9:15);
-        TextView headline=text("Время\nхорошего кино.",compact?29:36,WHITE,true);
-        headline.setLineSpacing(0,1.01f);overlay.addView(headline);
-        gap(overlay,compact?6:9);
-        overlay.addView(text("Любимые фильмы и сервисы.\nОдин экран, ничего лишнего.",
-            compact?12:14,0xFFE3E6EE,false));
-        gap(overlay,compact?10:17);
+        // Cinematic typography and controls over the entire hero, never a separate dock.
+        LinearLayout content=col();
+        content.setPadding(dp(compact?22:27),dp(compact?63:76),dp(12),dp(10));
+        hero.addView(content,new FrameLayout.LayoutParams(-1,-1));
+        TextView eyebrow=text("ТВОЙ ДОМАШНИЙ КИНОТЕАТР",compact?11:12,WHITE,true);
+        eyebrow.setLetterSpacing(.12f);
+        content.addView(eyebrow);gap(content,compact?5:9);
+        TextView headline=text("К И Н О",compact?52:60,0xFFFFC293,false);
+        headline.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
+        headline.setLetterSpacing(.08f);
+        headline.setShadowLayer(dp(12),0,0,0xCCF9A06B);
+        content.addView(headline);
+        gap(content,compact?0:2);
+        TextView sub=text("ФИЛЬМЫ  ·  СЕРИАЛЫ  ·  ТВ",compact?12:13,0xFFE9D6C9,false);
+        sub.setLetterSpacing(.10f);content.addView(sub);
+        gap(content,compact?9:14);
+        content.addView(text("Любимые истории и установленные сервисы.\nВсё под рукой, без рекламной ленты.",
+            compact?12:13,0xFFD8DAE4,false));
+        gap(content,compact?11:17);
         LinearLayout controls=row();
         pill(controls,"Смотреть",this::openBestVideo);
         pill(controls,"Приложения",()->switchTo(2));
-        overlay.addView(controls);
-        // The side dock replaces the old promotional-style floating hero cards.
-        if(!wide && screenWidth>=870)decorateHero(hero,compact);
-        int stageHeight=compact?239:(screenHeight<800?268:310);
-        if(wide){
-            LinearLayout.LayoutParams heroLp=new LinearLayout.LayoutParams(0,dp(stageHeight),1f);
-            heroLp.setMargins(0,0,dp(11),0);
-            stage.addView(hero,heroLp);
-            stage.addView(homeAppDock(stageHeight),new LinearLayout.LayoutParams(dp(282),dp(stageHeight)));
-            c.addView(stage,new LinearLayout.LayoutParams(-1,dp(stageHeight)));
-        }else{
-            c.addView(hero,new LinearLayout.LayoutParams(-1,dp(stageHeight)));
-        }
+        content.addView(controls);
 
-        gap(c,compact?9:12);
-        List<TvApp> visibleFav=favoriteApps();
-        boolean pinned=!visibleFav.isEmpty();
-        sectionHead(c,pinned?"Избранные приложения":"Ваши приложения",
-            "ОК — запуск  ·  удерживать ОК — изменить порядок",()->switchTo(2));
-        appStrip(c,pinned?visibleFav:forHome(),10);
-        gap(c,compact?6:9);
+        // Status controls belong to the image top edge, as on the reference.
+        LinearLayout statusBar=row();
+        statusBar.setGravity(Gravity.CENTER_VERTICAL|Gravity.RIGHT);
+        FrameLayout.LayoutParams sb=new FrameLayout.LayoutParams(dp(211),dp(41),Gravity.RIGHT|Gravity.TOP);
+        sb.topMargin=dp(8);sb.rightMargin=dp(13);
+        hero.addView(statusBar,sb);
+        FrameLayout search=heroTopButton(9,"Найти приложение",()->{appFilter="search";switchTo(2);});
+        FrameLayout settings=heroTopButton(5,"Настройки",()->switchTo(5));
+        FrameLayout wifi=heroTopButton(6,"Параметры Wi-Fi",()->trySettings(Settings.ACTION_WIFI_SETTINGS));
+        statusBar.addView(search,new LinearLayout.LayoutParams(dp(34),dp(34)));
+        statusBar.addView(settings,new LinearLayout.LayoutParams(dp(34),dp(34)));
+        statusBar.addView(wifi,new LinearLayout.LayoutParams(dp(34),dp(34)));
+        statusClock=text(new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date()),14,WHITE,false);
+        statusClock.setGravity(Gravity.CENTER);
+        statusBar.addView(statusClock,new LinearLayout.LayoutParams(dp(70),dp(35)));
+
+        LinearLayout vpn=row();
+        vpn.setGravity(Gravity.CENTER_VERTICAL);
+        vpn.setPadding(dp(10),0,dp(8),0);
+        selectable(vpn,0xF0192636);
+        TvIcon shield=new TvIcon(this,4,vpnConnected()?0xFF5FF5A3:ACCENT);
+        LinearLayout.LayoutParams si=new LinearLayout.LayoutParams(dp(22),dp(22));
+        si.rightMargin=dp(8);vpn.addView(shield,si);
+        statusVpn=text(vpnConnected()?"VPN включён":"VPN отключён",12,WHITE,true);
+        statusVpn.setMaxLines(1);
+        vpn.addView(statusVpn,new LinearLayout.LayoutParams(0,-1,1f));
+        vpn.setOnClickListener(v->openVpn());
+        FrameLayout.LayoutParams vp=new FrameLayout.LayoutParams(dp(155),dp(43),Gravity.RIGHT|Gravity.TOP);
+        vp.topMargin=dp(50);vp.rightMargin=dp(18);
+        hero.addView(vpn,vp);
+
+        int heroHeight=(int)Math.min(380,Math.max(330,sh*.55f));
+        c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
+        gap(c,8);
+        List<TvApp> favourites=favoriteApps();
+        boolean pinned=!favourites.isEmpty();
+        homeSection(c,pinned?"Избранные приложения":"Ваши приложения",()->switchTo(2));
+        appStrip(c,pinned?favourites:forHome(),10);
+        gap(c,8);
         ArrayList<TvApp> recent=recentApps();
+        List<TvApp> media=homeMediaApps();
         if(!recent.isEmpty()&&preferences.getBoolean("show_recent",true)){
-            sectionHead(c,"Недавно открытые","Реальная история запусков, не история фильмов",()->switchTo(2));
-            appStrip(c,recent,7);
+            homeSection(c,"Недавно открытые",()->switchTo(2));
+            cinemaStrip(c,recent,media);
         }else{
-            sectionHead(c,"Быстрый доступ","Частые действия и системные настройки",()->toggleQuickPanel());
-            LinearLayout quick=row();
-            quickHomeAction(quick,2,"Приложения",apps.size()+" установлено",()->switchTo(2));
-            quickHomeAction(quick,6,"Интернет",networkSummary(),
-                ()->trySettings(Settings.ACTION_WIFI_SETTINGS));
-            quickHomeAction(quick,4,"Smart VPN",vpnConnected()?"Подключено":"Открыть v2RayTun",this::openVpn);
-            c.addView(quick,new LinearLayout.LayoutParams(-1,dp(62)));
+            homeSection(c,"Смотреть и слушать",()->switchTo(1));
+            cinemaStrip(c,media,Collections.emptyList());
         }
+    }
+    private FrameLayout heroTopButton(int glyph,String desc,Runnable action){
+        FrameLayout b=new FrameLayout(this);
+        b.setContentDescription(desc);
+        selectable(b,0x240B1826);
+        TvIcon i=new TvIcon(this,glyph,0xFFDBE4EC);
+        b.addView(i,new FrameLayout.LayoutParams(dp(18),dp(18),Gravity.CENTER));
+        b.setOnClickListener(v->action.run());return b;
+    }
+    private void homeSection(LinearLayout parent,String heading,Runnable open){
+        LinearLayout bar=row();
+        TextView name=text(heading,15,WHITE,true);
+        bar.addView(name,new LinearLayout.LayoutParams(0,dp(23),1));
+        TextView more=text("Все  ›",11,0xFFC7D2DF,false);
+        more.setGravity(Gravity.CENTER);
+        more.setOnClickListener(v->open.run());more.setFocusable(true);
+        bar.addView(more,new LinearLayout.LayoutParams(dp(57),dp(23)));
+        parent.addView(bar,new LinearLayout.LayoutParams(-1,dp(23)));
+        gap(parent,5);
+    }
+    private List<TvApp> homeMediaApps(){
+        ArrayList<TvApp> media=new ArrayList<>();
+        for(TvApp a:forHome())if(isMedia(a))media.add(a);
+        return media;
+    }
+    private void cinemaStrip(LinearLayout parent,List<TvApp> first,List<TvApp> fallback){
+        ArrayList<TvApp> chosen=new ArrayList<>();
+        for(TvApp a:first)if(chosen.size()<4 && !chosen.contains(a))chosen.add(a);
+        for(TvApp a:fallback)if(chosen.size()<4 && !chosen.contains(a))chosen.add(a);
+        LinearLayout row=row();
+        row.setPadding(dp(2),0,dp(2),dp(2));
+        int k=0;
+        for(TvApp a:chosen){cinemaCard(row,a.label,a.banner,a.icon,
+            ()->{if(isYouTube(a))launchYouTube();else openDirect(a);});k++;}
+        if(k<4 && youtubeApp()!=null &&
+                chosen.stream().noneMatch(a->isYouTube(a))){
+            TvApp youtube=youtubeApp();
+            cinemaCard(row,"YouTube",youtube.banner,youtube.icon,this::launchYouTube);k++;
+        }
+        if(k<4){cinemaCard(row,"Кино и ТВ",null,null,()->switchTo(1));k++;}
+        if(k<4){cinemaCard(row,"Все приложения",null,null,()->switchTo(2));k++;}
+        if(k<4){cinemaCard(row,"Smart VPN",null,null,this::openVpn);k++;}
+        parent.addView(row,new LinearLayout.LayoutParams(-1,dp(117)));
+    }
+    private void cinemaCard(LinearLayout parent,String label,Drawable banner,Drawable icon,
+            Runnable action){
+        FrameLayout tile=new FrameLayout(this);
+        tile.setBackground(glass(0xEE1A2637,false,13));
+        tile.setClipToOutline(true);
+        tile.setFocusable(true);tile.setFocusableInTouchMode(false);
+        tile.setContentDescription(label);
+        if(banner!=null){
+            ImageView art=new ImageView(this);
+            art.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            art.setImageDrawable(banner);
+            tile.addView(art,new FrameLayout.LayoutParams(-1,-1));
+        }else tile.addView(new CardArtView(this,0xFF344A66),new FrameLayout.LayoutParams(-1,-1));
+        if(icon!=null){
+            ImageView appIcon=new ImageView(this);
+            appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);appIcon.setImageDrawable(icon);
+            FrameLayout.LayoutParams ap=new FrameLayout.LayoutParams(dp(38),dp(38),
+                Gravity.CENTER);
+            ap.bottomMargin=dp(15);tile.addView(appIcon,ap);
+        }
+        View vignette=new View(this);
+        vignette.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0x00101824,0x350D141F,0xEE090E18}));
+        tile.addView(vignette,new FrameLayout.LayoutParams(-1,-1));
+        TextView title=text(label,13,WHITE,true);
+        title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setPadding(dp(10),0,dp(6),dp(3));
+        tile.addView(title,new FrameLayout.LayoutParams(-1,dp(31),Gravity.BOTTOM));
+        tile.setForeground(focusStroke(false));
+        tile.setOnFocusChangeListener((v,f)->tile.setForeground(focusStroke(f)));
+        tile.setOnClickListener(v->action.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);
+        lp.setMargins(0,0,dp(8),0);
+        parent.addView(tile,lp);
     }
     private void quickHomeAction(LinearLayout row,int icon,String title,String subtitle,Runnable action){
         LinearLayout item=new LinearLayout(this);
@@ -698,7 +797,8 @@ public final class MainActivity extends Activity {
         c.addView(header);gap(c,7);
     }
     private void streaming(LinearLayout c){
-        title(c,"Кино и ТВ","Установленные видеосервисы без рекламной ленты.");
+        String section=page==8?"Сериалы":page==9?"Телевидение":"Фильмы";
+        title(c,section,"Откройте доступный видеосервис. Каталоги фильмов принадлежат самим приложениям.");
         ArrayList<TvApp> stream=new ArrayList<>();
         for(TvApp a:apps){
             String x=a.label.toLowerCase(Locale.ROOT);
