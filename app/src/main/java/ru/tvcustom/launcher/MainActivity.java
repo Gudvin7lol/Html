@@ -421,26 +421,31 @@ public final class MainActivity extends Activity {
         c.addView(text("Android TV не предоставляет обычным приложениям универсальный API переключения HDMI. Здесь открываются настоящие системные настройки.",13,MUTED,false));
     }
     private void vpnPage(LinearLayout c){
-        title(c,"Smart VPN","v2RayTun · подключение и правила приложений");
-        LinearLayout box=col();box.setPadding(dp(26),dp(22),dp(26),dp(22));
-        box.setBackground(bg(SURFACE,false,18));
-        box.addView(text(vpnConnected()?"●  VPN подключён":"○  VPN не обнаружен",24,
-            vpnConnected()?0xFF83E0AE:ACCENT,true));
-        gap(box,8);
-        box.addView(text("Статус определяется по VPN-сети Android. Управление туннелем остаётся в v2RayTun.",14,MUTED,false));
-        gap(box,18);
-        pill(box,"Открыть v2RayTun",this::openVpn);
-        gap(box,19);
-        box.addView(text("YouTube и VPN",20,WHITE,true));gap(box,8);
-        box.addView(text("При запуске YouTube лаунчер проверяет системное VPN-подключение. Если VPN нет, откроется v2RayTun для ручного подключения. После возвращения можно продолжить запуск YouTube.",14,MUTED,false));
-        gap(box,12);
-        boolean on=preferences.getBoolean("youtube_vpn",true);
-        pill(box,on?"Автопроверка: ВКЛ  ·  изменить":"Автопроверка: ВЫКЛ  ·  изменить",()->{
-            preferences.edit().putBoolean("youtube_vpn",!on).apply();render(4);
+        title(c,"Smart VPN","Подключение v2RayTun и сценарий для YouTube");
+        LinearLayout panel=col();
+        panel.setPadding(dp(23),dp(19),dp(23),dp(21));
+        panel.setBackground(glass(SURFACE,false,18));
+        LinearLayout top=row();
+        TvIcon shield=new TvIcon(this,4,vpnConnected()?0xFF81DDAF:ACCENT);
+        LinearLayout.LayoutParams shieldSize=new LinearLayout.LayoutParams(dp(56),dp(56));
+        shieldSize.rightMargin=dp(16);top.addView(shield,shieldSize);
+        LinearLayout state=col();
+        state.addView(text(vpnConnected()?"VPN подключён":"VPN отключён",24,WHITE,true));
+        state.addView(text("Управление соединением: v2RayTun",12,MUTED,false));
+        top.addView(state);panel.addView(top);
+        gap(panel,18);
+        pill(panel,"Открыть v2RayTun",this::openVpn);
+        gap(panel,22);
+        panel.addView(text("YouTube с VPN",18,ACCENT,true));gap(panel,9);
+        panel.addView(text("Перед запуском YouTube проверяем VPN. Если соединение выключено, открываем v2RayTun для подключения. После возвращения откроется YouTube, когда Android подтвердит VPN.",14,0xFFD6DCE6,false));
+        gap(panel,15);
+        boolean enabled=preferences.getBoolean("youtube_vpn",true);
+        pill(panel,enabled?"Проверка включена  ·  изменить":"Проверка выключена  ·  изменить",()->{
+            preferences.edit().putBoolean("youtube_vpn",!enabled).apply();
+            render(4);
         });
-        c.addView(box);
-        gap(c,14);
-        c.addView(text("Прямое включение VPN требует подтверждённой интеграции с v2RayTun. Лаунчер не выключает VPN сам и не сбрасывает профили.",13,MUTED,false));
+        c.addView(panel);gap(c,16);
+        c.addView(text("В этой сборке прямое автоматическое включение туннеля не реализовано. Лаунчер не меняет и не удаляет VPN-профили.",12,MUTED,false));
     }
     private void controlCenter(LinearLayout c){
         title(c,"Центр управления","Быстрые команды с пульта · меню открывается кнопкой MENU");
@@ -526,19 +531,53 @@ public final class MainActivity extends Activity {
     }
     private void pill(LinearLayout into,String label,Runnable cb){
         TextView b=text(label,15,WHITE,true);b.setGravity(Gravity.CENTER);
-        b.setPadding(dp(15),0,dp(15),0);selectable(b,SURFACE2);
+        b.setPadding(dp(20),0,dp(20),0);
+        boolean primary="Смотреть".equals(label);
+        selectable(b,primary?ACCENT:SURFACE2);
+        if(primary){
+            b.setTextColor(0xFF1B1E25);
+            b.setBackground(bg(ACCENT,false,14));
+            b.setOnFocusChangeListener((view,focused)->{
+                b.setBackground(bg(focused?0xFFFFD5B7:ACCENT,focused,14));
+                if(preferences.getBoolean("motion",true))
+                    b.animate().scaleX(focused?1.035f:1f).scaleY(focused?1.035f:1f).setDuration(120).start();
+            });
+        }
         b.setOnClickListener(v->cb.run());
         if(into.getOrientation()==LinearLayout.HORIZONTAL){
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(46));
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(44));
             lp.setMargins(0,0,dp(10),0);into.addView(b,lp);
-        } else into.addView(b,new LinearLayout.LayoutParams(dp(260),dp(50)));
+        } else into.addView(b,new LinearLayout.LayoutParams(dp(260),dp(49)));
+    }
+    private int quickSymbol(String label){
+        String x=label.toLowerCase(Locale.ROOT);
+        if(x.contains("vpn"))return 4;
+        if(x.contains("hdmi")||x.contains("экран"))return 3;
+        if(x.contains("сеть")||x.contains("wi-fi")||x.contains("интернет"))return 6;
+        if(x.contains("хранилищ")||x.contains("память")||x.contains("таймер"))return 7;
+        if(x.contains("youtube"))return 8;
+        if(x.contains("приложени"))return 2;
+        if(x.contains("оформлен")||x.contains("bluetooth"))return 5;
+        return 0;
     }
     private void quickTile(LinearLayout into,String title,String subtitle,Runnable cb){
-        LinearLayout t=col();t.setPadding(dp(16),dp(10),dp(7),dp(7));
-        t.addView(text(title,17,WHITE,true));t.addView(text(subtitle,12,MUTED,false));
-        selectable(t,SURFACE);t.setOnClickListener(v->cb.run());
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(75),1);
-        lp.setMargins(0,0,dp(12),0);into.addView(t,lp);
+        LinearLayout card=col();
+        card.setPadding(dp(17),dp(11),dp(12),dp(9));
+        selectable(card,SURFACE);
+        LinearLayout header=row();
+        TvIcon symbol=new TvIcon(this,quickSymbol(title),ACCENT);
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(23),dp(23));
+        ip.rightMargin=dp(12);
+        header.addView(symbol,ip);
+        TextView heading=text(title,15,WHITE,true);
+        heading.setMaxLines(1);heading.setEllipsize(TextUtils.TruncateAt.END);
+        header.addView(heading,new LinearLayout.LayoutParams(0,dp(29),1f));
+        card.addView(header);
+        TextView info=text(subtitle,11,MUTED,false);
+        info.setMaxLines(1);info.setEllipsize(TextUtils.TruncateAt.END);
+        card.addView(info);card.setOnClickListener(v->cb.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(83),1);
+        lp.setMargins(0,0,dp(9),0);into.addView(card,lp);
     }
     private void appStrip(LinearLayout c,List<TvApp> list,int max){
         HorizontalScrollView scroll=new HorizontalScrollView(this);
