@@ -361,27 +361,31 @@ public final class MainActivity extends Activity {
         }else hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
         View gradient=new View(this);
         gradient.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[]{0xF60A111E,0xE6081120,0xAF0B1120,0x1A08101B}));
+            new int[]{0xEF08111D,0xC90C1320,0x630A101A,0x04000000}));
         hero.addView(gradient,new FrameLayout.LayoutParams(-1,-1));
 
         // Cinematic typography and controls over the entire hero, never a separate dock.
         LinearLayout content=col();
         content.setPadding(dp(compact?22:27),dp(compact?63:76),dp(12),dp(10));
         hero.addView(content,new FrameLayout.LayoutParams(-1,-1));
-        TextView eyebrow=text("ТВОЙ ДОМАШНИЙ КИНОТЕАТР",compact?11:12,WHITE,true);
+        TextView eyebrow=text("XIAOMI TV  •  КИНЕМАТОГРАФИЧЕСКАЯ КОЛЛЕКЦИЯ",compact?10:11,0xFFE6D9D2,true);
         eyebrow.setLetterSpacing(.12f);
         content.addView(eyebrow);gap(content,compact?5:9);
-        TextView headline=text("К И Н О",compact?52:60,0xFFFFC293,false);
+        String featured=preferences.getString("featured_title","НОВЫЕ МИРЫ");
+        TextView headline=text(featured,compact?39:49,0xFFFFC293,false);
         headline.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
-        headline.setLetterSpacing(.08f);
+        headline.setLetterSpacing(.10f);
+        headline.setMaxLines(2);
+        headline.setEllipsize(TextUtils.TruncateAt.END);
         headline.setShadowLayer(dp(12),0,0,0xCCF9A06B);
         content.addView(headline);
         gap(content,compact?0:2);
         TextView sub=text("ФИЛЬМЫ  ·  СЕРИАЛЫ  ·  ТВ",compact?12:13,0xFFE9D6C9,false);
         sub.setLetterSpacing(.10f);content.addView(sub);
         gap(content,compact?9:14);
-        content.addView(text("Любимые истории и установленные сервисы.\nВсё под рукой, без рекламной ленты.",
-            compact?12:13,0xFFD8DAE4,false));
+        String featureDesc=preferences.getString("featured_caption",
+            "Любимые истории и установленные сервисы.\\nБез рекламной ленты.");
+        content.addView(text(featureDesc.replace("\\n","\n"),compact?12:13,0xFFD8DAE4,false));
         gap(content,compact?11:17);
         LinearLayout controls=row();
         pill(controls,"Смотреть",this::openBestVideo);
@@ -461,7 +465,9 @@ public final class MainActivity extends Activity {
         for(TvApp a:forHome())if(isMedia(a))media.add(a);
         return media;
     }
+    private int cinemaCardIndex=0;
     private void cinemaStrip(LinearLayout parent,List<TvApp> first,List<TvApp> fallback){
+        cinemaCardIndex=0;
         ArrayList<TvApp> chosen=new ArrayList<>();
         for(TvApp a:first)if(chosen.size()<4 && !chosen.contains(a))chosen.add(a);
         for(TvApp a:fallback)if(chosen.size()<4 && !chosen.contains(a))chosen.add(a);
@@ -492,7 +498,14 @@ public final class MainActivity extends Activity {
             art.setScaleType(ImageView.ScaleType.CENTER_CROP);
             art.setImageDrawable(banner);
             tile.addView(art,new FrameLayout.LayoutParams(-1,-1));
-        }else tile.addView(new CardArtView(this,0xFF344A66),new FrameLayout.LayoutParams(-1,-1));
+        }else{
+            Bitmap cinematic=loadPoster();
+            if(cinematic!=null)
+                tile.addView(new PosterSliceView(this,cinematic,cinemaCardIndex++),
+                    new FrameLayout.LayoutParams(-1,-1));
+            else tile.addView(new CardArtView(this,0xFF344A66),
+                    new FrameLayout.LayoutParams(-1,-1));
+        }
         if(icon!=null){
             ImageView appIcon=new ImageView(this);
             appIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);appIcon.setImageDrawable(icon);
@@ -1090,6 +1103,12 @@ public final class MainActivity extends Activity {
         title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
         c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
         action(c,"Постер главного экрана","Выбрать свою кинематографическую картинку",this::pickPoster);
+        action(c,"Заголовок на постере","Изменить большой заголовок главного экрана",
+            ()->editFeaturedText("featured_title","Заголовок постера",32,
+                "НОВЫЕ МИРЫ"));
+        action(c,"Описание постера","Подпись под названием и перед кнопками",
+            ()->editFeaturedText("featured_caption","Описание постера",90,
+                "Любимые истории и установленные сервисы."));
         action(c,"Сбросить постер","Вернуть встроенный кинематографический фон",()->{
             customPoster=null;preferences.edit().remove("hero_poster").apply();render(5);
         });
@@ -1139,7 +1158,29 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.10 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.13 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+    }
+    private void editFeaturedText(String key,String title,int maxLength,String fallback){
+        final EditText input=new EditText(this);
+        input.setSingleLine(key.equals("featured_title"));
+        input.setText(preferences.getString(key,fallback));
+        input.setFilters(new android.text.InputFilter[]{
+            new android.text.InputFilter.LengthFilter(maxLength)});
+        input.setSelectAllOnFocus(true);
+        new AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setPositiveButton("Сохранить",(d,w)->{
+                String value=input.getText().toString().trim();
+                if(value.isEmpty())value=fallback;
+                preferences.edit().putString(key,value).apply();
+                render(5);
+            })
+            .setNeutralButton("По умолчанию",(d,w)->{
+                preferences.edit().remove(key).apply();
+                render(5);
+            })
+            .setNegativeButton("Отмена",null).show();
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
