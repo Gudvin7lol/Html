@@ -60,6 +60,8 @@ public final class MainActivity extends Activity {
     private int knownAppCount=0;
     private Bitmap customPoster;
     private static final int REQ_POSTER=439;
+    private static final int REQ_EXPORT=440, REQ_IMPORT=441;
+    private int lastVisitedPage=0;
 
     static class TvApp {
         String pkg,label; Drawable icon,banner; Intent intent;
@@ -106,10 +108,16 @@ public final class MainActivity extends Activity {
         }
     }
     @Override public boolean onKeyDown(int keyCode,KeyEvent e) {
-        if(keyCode==KeyEvent.KEYCODE_MENU || keyCode==KeyEvent.KEYCODE_SETTINGS) { switchTo(6); return true; }
+        if((keyCode==KeyEvent.KEYCODE_MENU || keyCode==KeyEvent.KEYCODE_SETTINGS)
+            && e.getRepeatCount()==0) {
+            if(page!=6){lastVisitedPage=page; switchTo(6);}
+            else switchTo(lastVisitedPage);
+            return true;
+        }
         return super.onKeyDown(keyCode,e);
     }
     @Override public void onBackPressed() {
+        if(page==6) { switchTo(lastVisitedPage); return; }
         if(page!=0) { switchTo(0); return; }
         super.onBackPressed();
     }
@@ -302,8 +310,16 @@ public final class MainActivity extends Activity {
         }
     }
     private void openBestVideo(){
-        for(TvApp a:forHome())if(isMedia(a)&&!isYouTube(a)){openDirect(a);return;}
-        launchYouTube();
+        // A predictable action: last video service if available, otherwise YouTube,
+        // otherwise offer the video-app selection. Never open an arbitrary alphabetic app.
+        for(TvApp a:recentApps())if(isMedia(a)){
+            if(isYouTube(a))launchYouTube();
+            else openDirect(a);
+            return;
+        }
+        TvApp youTube=youtubeApp();
+        if(youTube!=null){launchYouTube();return;}
+        switchTo(1);
     }
     private ArrayList<TvApp> recentApps(){
         ArrayList<TvApp> result=new ArrayList<>();
@@ -349,6 +365,59 @@ public final class MainActivity extends Activity {
         }catch(Exception ignored){}
         return customPoster;
     }
+    private void exportSettings(){
+        Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE,"XiaomiTVCustom-settings.json");
+        try{startActivityForResult(intent,REQ_EXPORT);}
+        catch(Exception e){Toast.makeText(this,"Экспорт недоступен",Toast.LENGTH_SHORT).show();}
+    }
+    private void importSettings(){
+        Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        try{startActivityForResult(intent,REQ_IMPORT);}
+        catch(Exception e){Toast.makeText(this,"Выбор файла недоступен",Toast.LENGTH_SHORT).show();}
+    }
+    private void exportToUri(Uri uri){
+        try(java.io.OutputStream stream=getContentResolver().openOutputStream(uri,"w")){
+            if(stream==null)throw new java.io.IOException("No output stream");
+            byte[] bytes=LauncherBackup.exportConfig(preferences).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            stream.write(bytes);stream.flush();
+            Toast.makeText(this,"Настройки сохранены",Toast.LENGTH_LONG).show();
+        }catch(Exception e){Toast.makeText(this,"Ошибка экспорта: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+    }
+    private void loadFromUri(Uri uri){
+        try(java.io.InputStream in=getContentResolver().openInputStream(uri)){
+            if(in==null)throw new java.io.IOException("No input stream");
+            java.io.ByteArrayOutputStream memory=new java.io.ByteArrayOutputStream();
+            byte[] buffer=new byte[4096];int n;
+            while((n=in.read(buffer))!=-1){
+                if(memory.size()+n>131072)throw new java.io.IOException("Файл больше 128 КБ");
+                memory.write(buffer,0,n);
+            }
+            String json=new String(memory.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+            org.json.JSONObject parsed=new org.json.JSONObject(json);
+            if(!"xiaomi-tv-custom-settings".equals(parsed.optString("format")) ||
+                 parsed.optInt("schema",-1)!=LauncherBackup.SCHEMA)
+                throw new org.json.JSONException("Неизвестный формат настроек");
+            new AlertDialog.Builder(this)
+                .setTitle("Восстановить настройки?")
+                .setMessage("Будет заменено избранное, порядок приложений и настройки лаунчера. VPN-профили не затрагиваются.")
+                .setNegativeButton("Отмена",null)
+                .setPositiveButton("Восстановить",(d,w)->{
+                    try{
+                        int count=LauncherBackup.importConfig(json,preferences);
+                        background.setScenic(preferences.getBoolean("scenic",true));
+                        render(page);
+                        Toast.makeText(this,"Восстановлено. В избранном: "+count,Toast.LENGTH_LONG).show();
+                    }catch(Exception e){
+                        Toast.makeText(this,"Ошибка импорта: "+e.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }).show();
+        }catch(Exception e){Toast.makeText(this,"Не удалось прочитать: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+    }
     private void pickPoster(){
         Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
@@ -358,7 +427,10 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        if(request==REQ_POSTER && result==RESULT_OK && data!=null && data.getData()!=null){
+        if(result!=RESULT_OK || data==null || data.getData()==null)return;
+        if(request==REQ_EXPORT){ exportToUri(data.getData());return; }
+        if(request==REQ_IMPORT){ loadFromUri(data.getData());return; }
+        if(request==REQ_POSTER){
             Uri uri=data.getData();
             try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}
             catch(Exception ignored){}
@@ -544,6 +616,10 @@ public final class MainActivity extends Activity {
                 ()->trySettings(Settings.ACTION_HOME_SETTINGS));
         action(c,"Настройки Android TV","Оригинальное меню Xiaomi",
                 ()->trySettings(Settings.ACTION_SETTINGS));
+        c.addView(text("РЕЗЕРВНАЯ КОПИЯ",12,ACCENT,true));gap(c,9);
+        action(c,"Экспорт настроек","Избранное, порядок и параметры в JSON",this::exportSettings);
+        action(c,"Импорт настроек","Восстановить ранее сохранённую конфигурацию",this::importSettings);
+        gap(c,16);
         action(c,"Сбросить порядок избранного","Не удаляет установленные приложения",()->{
             new AlertDialog.Builder(this).setTitle("Очистить избранное?")
                 .setMessage("Удалить только отметки избранных программ?")
@@ -552,7 +628,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.3 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.5 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void setting(LinearLayout c,String name,String detail,String key,boolean def){
         boolean active=preferences.getBoolean(key,def);
