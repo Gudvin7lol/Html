@@ -312,7 +312,7 @@ public final class MainActivity extends Activity {
         first.setNextFocusLeftId(activeNav.getId());
     }
     private View findFirstFocusable(View view){
-        if(view!=null && view.isFocusable() && view.getVisibility()==View.VISIBLE)return view;
+        if(view==null || view.getVisibility()!=View.VISIBLE)return null;
         if(view instanceof ViewGroup){
             ViewGroup group=(ViewGroup)view;
             for(int i=0;i<group.getChildCount();i++){
@@ -320,7 +320,7 @@ public final class MainActivity extends Activity {
                 if(candidate!=null)return candidate;
             }
         }
-        return null;
+        return view.isFocusable()?view:null;
     }
     private void title(LinearLayout parent,String t,String subtitle){
         parent.addView(text(t,26,WHITE,true));gap(parent,4);
@@ -345,23 +345,24 @@ public final class MainActivity extends Activity {
             new int[]{0xF708101C,0xEF0B1320,0x9C101625,0x09000000}));
         hero.addView(shade,new FrameLayout.LayoutParams(-1,-1));
 
+        int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
+            getResources().getDisplayMetrics().density);
+        boolean compact=screenHeight<620;
         LinearLayout overlay=col();
-        overlay.setPadding(dp(28),dp(20),dp(18),dp(15));
+        overlay.setPadding(dp(compact?18:28),dp(compact?13:20),dp(18),dp(compact?8:15));
         hero.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-        TextView kicker=text("ТВОЙ КИНОТЕАТР   /   XIAOMI TV CUSTOM",11,ACCENT,true);
-        kicker.setLetterSpacing(.12f);overlay.addView(kicker);gap(overlay,14);
-        TextView headline=text("Кино начинается\nздесь.",36,WHITE,true);
-        headline.setLineSpacing(0,1.02f);overlay.addView(headline);gap(overlay,8);
-        overlay.addView(text("Фильмы, сериалы и любимые приложения.\nВсё под рукой, без рекламы в меню.",14,0xFFD5DBE5,false));
-        gap(overlay,15);
+        TextView kicker=text("ТВОЙ КИНОТЕАТР   /   XIAOMI TV CUSTOM",compact?10:11,ACCENT,true);
+        kicker.setLetterSpacing(.12f);overlay.addView(kicker);gap(overlay,compact?7:14);
+        TextView headline=text("Кино начинается\nздесь.",compact?27:36,WHITE,true);
+        headline.setLineSpacing(0,1.02f);overlay.addView(headline);gap(overlay,compact?4:8);
+        overlay.addView(text("Фильмы, сериалы и любимые приложения.\nВсё под рукой, без рекламы в меню.",compact?12:14,0xFFD5DBE5,false));
+        gap(overlay,compact?8:15);
         LinearLayout buttons=row();
         pill(buttons,"Смотреть",this::openBestVideo);
         pill(buttons,"Smart VPN",this::openVpn);
         overlay.addView(buttons);
 
-        int screenHeight=(int)(getResources().getDisplayMetrics().heightPixels/
-            getResources().getDisplayMetrics().density);
-        int heroHeight=Math.min(330,Math.max(238,(int)(screenHeight*.43f)));
+        int heroHeight=Math.min(328,Math.max(compact?222:265,(int)(screenHeight*.43f)));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
 
         gap(c,17);
