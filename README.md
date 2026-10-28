@@ -131,3 +131,13 @@ Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer 
 - Local JSON preferences backup includes film titles, service package names and manual progress; source cover URIs are excluded because Android grants do not transfer across reinstalls.
 - Up to 30 watchlist items are supported. No account sign-in, streaming service API or privileged VPN control is claimed.
 - Real APK compilation/signature checks and Android emulator screenshots remain CI gated.
+
+## Xiaomi TV Custom 1.15.0: four approved rotating hero posters
+- Bundled four approved 1920x1080 WebP cinematic posters in app/assets/poster1.webp through poster4.webp.
+- Two-frame 850ms crossfade every 30 seconds. Rotation pauses when app is backgrounded.
+- Previous/next focusable TV controls and four-dot indicator.
+- Settings: auto-rotation toggle, 15/30/60-second interval, manually choose poster.
+- Custom imported poster takes priority until reset.
+- Selection and rotation preferences included in JSON backup.
+- RGB_565 decoding limits RAM usage: at most two visible full-size frames, downsamples when narrow.
+- Emulator QA captures before and after the 30-second interval.
