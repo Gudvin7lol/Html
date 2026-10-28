@@ -49,6 +49,9 @@ jobs:
             adb pull /sdcard/window.xml window.xml || true
             adb shell screencap -p /sdcard/tv_home.png
             adb pull /sdcard/tv_home.png tv_home.png
+            sleep 33
+            adb shell screencap -p /sdcard/tv_home_after_rotation.png
+            adb pull /sdcard/tv_home_after_rotation.png tv_home_after_rotation.png
             adb shell input keyevent 82
             sleep 3
             adb shell screencap -p /sdcard/tv_controls.png
@@ -65,6 +68,7 @@ jobs:
             adb shell dumpsys activity activities | grep -E 'Resumed|mResumedActivity' > emulator_activity.txt || true
             adb logcat -d -s AndroidRuntime:E > android_crashes.txt || true
             test -s tv_home.png
+            test -s tv_home_after_rotation.png
             test -s tv_controls.png
             test -s tv_apps.png
             if grep -q "FATAL EXCEPTION" android_crashes.txt; then cat android_crashes.txt; exit 1; fi
@@ -72,9 +76,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.14.0-real-emulator-screenshots
+          name: XiaomiTVCustom-1.15.0-rotating-posters-screenshots
           path: |
             tv_home.png
+            tv_home_after_rotation.png
             window.xml
             tv_controls.png
             tv_apps.png
