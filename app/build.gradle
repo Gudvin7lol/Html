@@ -6,8 +6,8 @@ android {
         applicationId "ru.tvcustom.launcher"
         minSdk 26
         targetSdk 30
-        versionCode 30
-        versionName "1.15.0"
+        versionCode 31
+        versionName "1.16.0"
     }
     buildTypes {
         release { minifyEnabled false }
