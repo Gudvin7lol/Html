@@ -123,3 +123,11 @@ Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer 
 - Uses cinematic artwork for one media tile only; other installed app/shortcuts render visibly different warm, blue and emerald gradient scenes instead of repeating one poster four times.
 - App labels remain truthful: installed providers are launchable, but no fabricated show posters, playback progress or unattended v2RayTun toggling.
 - Editable main feature title/caption can be restored from backup.
+
+## Xiaomi TV Custom 1.14.0: personal media watchlist
+- A genuine user-created **Моя медиатека** inside Films, Series and Settings: choose an installed video app and enter the film/series title; edit title, assign 0–100% progress in 10% increments, select cover image through the Android Storage Access Framework, remove the entry.
+- Home shows **Продолжить просмотр** only if the user has unfinished watchlist entries; never fabricates viewing history from OTT providers. Otherwise it shows actual installed media services with a link to add a film.
+- Watchlist cards show selected user cover (decoded at bounded bitmap size), title, manual progress and progress bar. Press OK to launch the associated service; long-OK edits the entry. Launching the service is not a direct deep link to the film.
+- Local JSON preferences backup includes film titles, service package names and manual progress; source cover URIs are excluded because Android grants do not transfer across reinstalls.
+- Up to 30 watchlist items are supported. No account sign-in, streaming service API or privileged VPN control is claimed.
+- Real APK compilation/signature checks and Android emulator screenshots remain CI gated.
