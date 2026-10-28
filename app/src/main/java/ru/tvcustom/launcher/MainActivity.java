@@ -434,7 +434,9 @@ public final class MainActivity extends Activity {
         homeSection(c,pinned?"Избранные приложения":"Ваши приложения",()->switchTo(2));
         appStrip(c,pinned?favourites:forHome(),10);
         gap(c,8);
-        List<WatchlistStore.Entry> watch=WatchlistStore.load(preferences);
+        List<WatchlistStore.Entry> watch=new ArrayList<>();
+        for(WatchlistStore.Entry entry:WatchlistStore.load(preferences))
+            if(entry.progress<100)watch.add(entry);
         if(!watch.isEmpty()){
             homeSection(c,"Продолжить просмотр · мой список",()->switchTo(10));
             watchlistStrip(c,watch);
@@ -546,7 +548,13 @@ public final class MainActivity extends Activity {
             if(count==4)break;
             watchCard(row,entry);count++;
         }
-        if(count<4)cinemaCard(row,"+ Добавить",null,null,this::addWatchEntry);
+        if(count<4){cinemaCard(row,"+ Добавить",null,null,this::addWatchEntry);count++;}
+        while(count<4){
+            View space=new View(this);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);
+            lp.setMargins(0,0,dp(8),0);row.addView(space,lp);
+            count++;
+        }
         parent.addView(row,new LinearLayout.LayoutParams(-1,dp(117)));
     }
     private void openWatchEntry(WatchlistStore.Entry entry){
@@ -1338,7 +1346,8 @@ public final class MainActivity extends Activity {
         setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
         setting(c,"Плавные переходы","Лёгкое увеличение активной карточки","motion",true);
         setting(c,"Крупные карточки","Большие приложения и упрощённая сетка","large_cards",true);
-        setting(c,"История на главном экране","Недавно открытые приложения под избранным","show_recent",true);
+        action(c,"Медиатека на главном экране",
+            WatchlistStore.load(preferences).size()+" записей · прогресс вручную",()->switchTo(10));
         gap(c,16);
         c.addView(text("СЦЕНАРИИ",12,ACCENT,true));gap(c,9);
         setting(c,"VPN перед YouTube","Открывать v2RayTun при отсутствии соединения","youtube_vpn",true);
