@@ -75,7 +75,8 @@ public final class MainActivity extends Activity {
     };
     private Bitmap customPoster;
     private static final int REQ_POSTER=439;
-    private static final int REQ_EXPORT=440, REQ_IMPORT=441;
+    private static final int REQ_EXPORT=440, REQ_IMPORT=441, REQ_WATCH_POSTER=442;
+    private String pendingWatchPosterId="";
     private int lastVisitedPage=0;
 
     static class TvApp {
@@ -157,6 +158,7 @@ public final class MainActivity extends Activity {
     }
     @Override public void onBackPressed() {
         if(quickOverlay!=null){ closeQuickPanel();return; }
+        if(page==10){switchTo(1);return;}
         if(page==7){ switchTo(5); return; }
         if(page==6) { switchTo(lastVisitedPage); return; }
         if(page!=0) { switchTo(0); return; }
@@ -298,6 +300,7 @@ public final class MainActivity extends Activity {
           case 1: streaming(c);break;
           case 8: streaming(c);break;
           case 9: streaming(c);break;
+          case 10: watchlistPage(c);break;
           case 2: allApps(c);break;
           case 3: hdmi(c);break;
           case 4: vpnPage(c);break;
@@ -431,14 +434,13 @@ public final class MainActivity extends Activity {
         homeSection(c,pinned?"Избранные приложения":"Ваши приложения",()->switchTo(2));
         appStrip(c,pinned?favourites:forHome(),10);
         gap(c,8);
-        ArrayList<TvApp> recent=recentApps();
-        List<TvApp> media=homeMediaApps();
-        if(!recent.isEmpty()&&preferences.getBoolean("show_recent",true)){
-            homeSection(c,"Недавно открытые",()->switchTo(2));
-            cinemaStrip(c,recent,media);
+        List<WatchlistStore.Entry> watch=WatchlistStore.load(preferences);
+        if(!watch.isEmpty()){
+            homeSection(c,"Продолжить просмотр · мой список",()->switchTo(10));
+            watchlistStrip(c,watch);
         }else{
-            homeSection(c,"Смотреть и слушать",()->switchTo(1));
-            cinemaStrip(c,media,Collections.emptyList());
+            homeSection(c,"Видеосервисы · добавить фильм в свой список",()->switchTo(10));
+            cinemaStrip(c,homeMediaApps(),Collections.emptyList());
         }
     }
     private FrameLayout heroTopButton(int glyph,String desc,Runnable action){
@@ -791,6 +793,19 @@ public final class MainActivity extends Activity {
         if(result!=RESULT_OK || data==null || data.getData()==null)return;
         if(request==REQ_EXPORT){ exportToUri(data.getData());return; }
         if(request==REQ_IMPORT){ loadFromUri(data.getData());return; }
+        if(request==REQ_WATCH_POSTER){
+            String id=pendingWatchPosterId;pendingWatchPosterId="";
+            Uri uri=data.getData();
+            try{getContentResolver().takePersistableUriPermission(uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(Exception ignored){}
+            for(WatchlistStore.Entry entry:WatchlistStore.load(preferences)){
+                if(entry.id.equals(id)){
+                    entry.posterUri=uri.toString();
+                    WatchlistStore.update(preferences,entry);break;
+                }
+            }
+            render(page);return;
+        }
         if(request==REQ_POSTER){
             Uri uri=data.getData();
             try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}
@@ -815,7 +830,8 @@ public final class MainActivity extends Activity {
     }
     private void streaming(LinearLayout c){
         String section=page==8?"Сериалы":page==9?"Телевидение":"Фильмы";
-        title(c,section,"Откройте доступный видеосервис. Каталоги фильмов принадлежат самим приложениям.");
+        title(c,section,"Доступные видеосервисы и ваша медиатека.");
+        action(c,"Моя медиатека","Добавить фильм, обложку и отметку просмотра",()->switchTo(10));
         ArrayList<TvApp> stream=new ArrayList<>();
         for(TvApp a:apps){
             String x=a.label.toLowerCase(Locale.ROOT);
@@ -1107,6 +1123,7 @@ public final class MainActivity extends Activity {
         title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
         c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
         action(c,"Постер главного экрана","Выбрать свою кинематографическую картинку",this::pickPoster);
+        action(c,"Моя медиатека","Названия, прогресс и обложки ваших фильмов",()->switchTo(10));
         action(c,"Заголовок на постере","Изменить большой заголовок главного экрана",
             ()->editFeaturedText("featured_title","Заголовок постера",32,
                 "НОВЫЕ МИРЫ"));
@@ -1162,7 +1179,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.13 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.14 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void editFeaturedText(String key,String title,int maxLength,String fallback){
         final EditText input=new EditText(this);
