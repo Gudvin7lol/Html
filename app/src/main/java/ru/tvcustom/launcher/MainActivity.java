@@ -460,6 +460,12 @@ public final class MainActivity extends Activity {
 
             TextView counter=text("●  ○  ○  ○",16,0xFFFFCEB4,true);
             counter.setGravity(Gravity.CENTER);
+            counter.setFocusable(true);
+            counter.setFocusableInTouchMode(false);
+            counter.setContentDescription("Постер 1 из 4. ОК — остановить автосмену. Влево и вправо — переключить.");
+            counter.setOnFocusChangeListener((view,focused)->{
+                counter.setBackground(focused?bg(0xB8382E32,true,11):null);
+            });
             navigation.addView(counter,new LinearLayout.LayoutParams(dp(115),dp(34)));
 
             TextView next=text("›",26,WHITE,true);
@@ -476,6 +482,10 @@ public final class MainActivity extends Activity {
             HeroCarouselView slideshow=new HeroCarouselView(this,preferences,index->{
                 counter.setText((index==0?"●":"○")+"  "+(index==1?"●":"○")+
                     "  "+(index==2?"●":"○")+"  "+(index==3?"●":"○"));
+                counter.setContentDescription("Постер "+(index+1)+" из 4. "+
+                    (preferences.getBoolean("carousel_autoplay",true)?
+                    "Автосмена включена.":"Автосмена выключена.")+
+                    " ОК — переключить автосмену. Влево или вправо — другой постер.");
                 if(!preferences.contains("featured_title"))
                     headline.setText(CAROUSEL_TITLES[index]);
                 if(!preferences.contains("featured_caption"))
@@ -485,6 +495,28 @@ public final class MainActivity extends Activity {
             heroCarousel=slideshow;
             previous.setOnClickListener(v->slideshow.previous());
             next.setOnClickListener(v->slideshow.next());
+            counter.setOnKeyListener((view,key,event)->{
+                if(event.getAction()!=KeyEvent.ACTION_DOWN)return false;
+                if(key==KeyEvent.KEYCODE_DPAD_LEFT){
+                    if(event.getRepeatCount()==0)slideshow.previous();
+                    return true;
+                }
+                if(key==KeyEvent.KEYCODE_DPAD_RIGHT){
+                    if(event.getRepeatCount()==0)slideshow.next();
+                    return true;
+                }
+                return false;
+            });
+            counter.setOnClickListener(v->{
+                boolean autoplay=!preferences.getBoolean("carousel_autoplay",true);
+                preferences.edit().putBoolean("carousel_autoplay",autoplay).apply();
+                slideshow.refreshSettings();
+                counter.setContentDescription("Постер "+(slideshow.getSelected()+1)+" из 4. "+
+                    (autoplay?"Автосмена включена.":"Автосмена выключена.")+
+                    " ОК — переключить автосмену. Влево или вправо — другой постер.");
+                Toast.makeText(this,autoplay?"Автосмена постеров включена":
+                    "Автосмена постеров остановлена",Toast.LENGTH_SHORT).show();
+            });
             slideshow.setActive(activityVisible);
         }
         int heroHeight=(int)Math.min(380,Math.max(330,sh*.55f));
@@ -1234,6 +1266,7 @@ public final class MainActivity extends Activity {
             restore.post(restore::requestFocus);
         }
         focusBeforeOverlay=null;
+        if(heroCarousel!=null)heroCarousel.setActive(activityVisible);
     }
     private void quickPanelAction(LinearLayout into,int iconId,String heading,
                                   String description,Runnable task){
@@ -1257,6 +1290,7 @@ public final class MainActivity extends Activity {
     private void openQuickPanel(){
         if(rootView==null || quickOverlay!=null)return;
         focusBeforeOverlay=getCurrentFocus();
+        if(heroCarousel!=null)heroCarousel.setActive(false);
         FrameLayout root=(FrameLayout)rootView;
         FrameLayout layer=new FrameLayout(this);
         quickOverlay=layer;
@@ -1458,7 +1492,7 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.15 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.16 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
     }
     private void changeCarouselInterval(){
         final String[] options={"15 секунд","30 секунд","60 секунд"};
