@@ -54,7 +54,7 @@ jobs:
             adb pull /sdcard/tv_home_after_rotation.png tv_home_after_rotation.png
             adb shell uiautomator dump /sdcard/carousel_window.xml
             adb pull /sdcard/carousel_window.xml carousel_window.xml
-            python3 -c 'import xml.etree.ElementTree as E,re; nodes=E.parse("carousel_window.xml").getroot().iter("node"); matches=[n for n in nodes if n.attrib.get("content-desc")=="Следующий постер"]; assert len(matches)==1, "Next poster control missing"; b=list(map(int,re.findall(r"\\d+",matches[0].attrib["bounds"]))); print((b[0]+b[2])//2,(b[1]+b[3])//2)' > carousel_touch.txt
+            python3 -c 'import xml.etree.ElementTree as E,re; nodes=E.parse("carousel_window.xml").getroot().iter("node"); matches=[n for n in nodes if n.attrib.get("content-desc")=="Следующий постер"]; assert len(matches)==1, "Next poster control missing"; b=list(map(int,re.findall(r"\d+",matches[0].attrib["bounds"]))); print((b[0]+b[2])//2,(b[1]+b[3])//2)' > carousel_touch.txt
             adb shell input tap $(cat carousel_touch.txt)
             sleep 3
             adb shell screencap -p /sdcard/tv_home_manual.png
