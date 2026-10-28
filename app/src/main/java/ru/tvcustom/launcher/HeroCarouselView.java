@@ -82,6 +82,11 @@ public final class HeroCarouselView extends FrameLayout {
     private void show(int index,boolean animate){
         if(!attached){selected=index;return;}
         if(index==displayed && foreground.getDrawable()!=null){
+            // Cancel any pending/in-flight transition back to the currently visible image.
+            request++;
+            incoming.animate().cancel();
+            incoming.setImageDrawable(null);
+            incoming.setAlpha(0f);
             selected=index;
             resetTimer();
             return;
