@@ -141,3 +141,13 @@ Reference: supplied Xiaomi TV cinematic design. Actual Android screen no longer 
 - Selection and rotation preferences included in JSON backup.
 - RGB_565 decoding limits RAM usage: at most two visible full-size frames, downsamples when narrow.
 - Emulator QA captures before and after the 30-second interval.
+
+## Version 1.16.0: poster carousel quality and TV remote controls
+- Four original approved Full-HD posters remain bundled offline, with an 850ms crossfade and the existing 15/30/60-second intervals.
+- Poster decoder is asynchronous and uses RGB_565 for smaller allocations; only the visible and incoming image are retained. Obsolete asynchronous requests are discarded; a failed image decode does not replace the visible slide. Autoplay schedules from when the new frame has actually become visible.
+- Focus the four-dot indicator in the home poster. DPAD LEFT/RIGHT selects the previous/next frame; OK pauses/resumes automatic rotation in place.
+- Carousel pauses behind the on-screen Quick Controls overlay and when the activity is paused; resumes when visible.
+- Choosing a poster from Settings now **locks** it and disables autoplay until user turns rotation on again, rather than unexpectedly moving away after 30 seconds.
+- JSON settings backup now includes autoplay, interval and last displayed slide. Existing backups remain compatible.
+- Emulator QA verifies slide 0 -> slide 1 automatically, then taps the accessible Next poster button to show slide 2, captures home screenshots and a memory snapshot, and fails if a slide does not render.
+- Does not claim visual testing on a physical Xiaomi MiTV-MOOQ1; system VPN still needs user interaction in v2RayTun.
