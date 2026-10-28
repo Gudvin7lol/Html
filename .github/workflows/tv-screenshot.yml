@@ -52,6 +52,18 @@ jobs:
             sleep 33
             adb shell screencap -p /sdcard/tv_home_after_rotation.png
             adb pull /sdcard/tv_home_after_rotation.png tv_home_after_rotation.png
+            adb shell uiautomator dump /sdcard/carousel_window.xml
+            adb pull /sdcard/carousel_window.xml carousel_window.xml
+            python3 -c 'import xml.etree.ElementTree as E,re; nodes=E.parse("carousel_window.xml").getroot().iter("node"); matches=[n for n in nodes if n.attrib.get("content-desc")=="Следующий постер"]; assert len(matches)==1, "Next poster control missing"; b=list(map(int,re.findall(r"\\d+",matches[0].attrib["bounds"]))); print((b[0]+b[2])//2,(b[1]+b[3])//2)' > carousel_touch.txt
+            adb shell input tap $(cat carousel_touch.txt)
+            sleep 3
+            adb shell screencap -p /sdcard/tv_home_manual.png
+            adb pull /sdcard/tv_home_manual.png tv_home_manual.png
+            adb logcat -d -s TVCarousel:I > carousel_log.txt
+            grep -q 'visible poster=0' carousel_log.txt
+            grep -q 'visible poster=1' carousel_log.txt
+            grep -q 'visible poster=2' carousel_log.txt
+            adb shell dumpsys meminfo ru.tvcustom.launcher > carousel_memory.txt || true
             adb shell input keyevent 82
             sleep 3
             adb shell screencap -p /sdcard/tv_controls.png
@@ -69,6 +81,7 @@ jobs:
             adb logcat -d -s AndroidRuntime:E > android_crashes.txt || true
             test -s tv_home.png
             test -s tv_home_after_rotation.png
+            test -s tv_home_manual.png
             test -s tv_controls.png
             test -s tv_apps.png
             if grep -q "FATAL EXCEPTION" android_crashes.txt; then cat android_crashes.txt; exit 1; fi
@@ -76,10 +89,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XiaomiTVCustom-1.15.0-rotating-posters-screenshots
+          name: XiaomiTVCustom-1.16.0-rotating-posters-screenshots
           path: |
             tv_home.png
             tv_home_after_rotation.png
+            tv_home_manual.png
+            carousel_window.xml
+            carousel_log.txt
+            carousel_memory.txt
             window.xml
             tv_controls.png
             tv_apps.png
