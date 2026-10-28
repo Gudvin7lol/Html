@@ -468,6 +468,96 @@ public final class MainActivity extends Activity {
         return media;
     }
     private int cinemaCardIndex=0;
+    private TvApp appByPackage(String pkg){
+        for(TvApp app:apps)if(app.pkg.equals(pkg))return app;
+        return null;
+    }
+    private Bitmap watchPoster(String poster){
+        if(poster==null||poster.isEmpty())return null;
+        try{
+            Uri uri=Uri.parse(poster);
+            BitmapFactory.Options b=new BitmapFactory.Options();b.inJustDecodeBounds=true;
+            try(InputStream in=getContentResolver().openInputStream(uri)){
+                BitmapFactory.decodeStream(in,null,b);
+            }
+            if(b.outWidth<=0||b.outHeight<=0)return null;
+            int factor=1;
+            while(b.outWidth/factor>640||b.outHeight/factor>440)factor*=2;
+            BitmapFactory.Options o=new BitmapFactory.Options();
+            o.inSampleSize=factor;o.inPreferredConfig=Bitmap.Config.RGB_565;
+            try(InputStream in=getContentResolver().openInputStream(uri)){
+                return BitmapFactory.decodeStream(in,null,o);
+            }
+        }catch(Exception e){return null;}
+    }
+    private void watchCard(LinearLayout parent,WatchlistStore.Entry entry){
+        FrameLayout card=new FrameLayout(this);
+        card.setBackground(glass(0xF11B2635,false,12));
+        card.setClipToOutline(true);
+        card.setFocusable(true);card.setFocusableInTouchMode(false);
+        card.setContentDescription(entry.title+" · "+entry.progress+" процентов вручную");
+        Bitmap poster=watchPoster(entry.posterUri);
+        if(poster!=null){
+            ImageView cover=new ImageView(this);
+            cover.setImageBitmap(poster);cover.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            card.addView(cover,new FrameLayout.LayoutParams(-1,-1));
+        }else{
+            TvApp app=appByPackage(entry.packageName);
+            if(app!=null&&app.banner!=null){
+                ImageView backdrop=new ImageView(this);
+                backdrop.setImageDrawable(app.banner);
+                backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                card.addView(backdrop,new FrameLayout.LayoutParams(-1,-1));
+            }else card.addView(new CardArtView(this,0xFF2A4566),
+                new FrameLayout.LayoutParams(-1,-1));
+        }
+        View scrim=new View(this);
+        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0x140A111B,0x2B0A111B,0xF309101A}));
+        card.addView(scrim,new FrameLayout.LayoutParams(-1,-1));
+        TextView title=text(entry.title,13,WHITE,true);
+        title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setPadding(dp(10),0,dp(9),0);
+        FrameLayout.LayoutParams label=new FrameLayout.LayoutParams(-1,dp(28),Gravity.BOTTOM);
+        label.bottomMargin=dp(18);card.addView(title,label);
+        TextView progress=text(entry.progress+"% · вручную",10,0xFFF0B693,false);
+        progress.setPadding(dp(10),0,dp(8),0);
+        FrameLayout.LayoutParams sub=new FrameLayout.LayoutParams(-1,dp(15),Gravity.BOTTOM);
+        sub.bottomMargin=dp(5);card.addView(progress,sub);
+        LinearLayout line=row();line.setBackgroundColor(0xFF354156);
+        View done=new View(this);done.setBackgroundColor(ACCENT);
+        line.addView(done,new LinearLayout.LayoutParams(0,-1,Math.max(.001f,entry.progress)));
+        line.addView(new View(this),new LinearLayout.LayoutParams(0,-1,Math.max(.001f,100-entry.progress)));
+        FrameLayout.LayoutParams bar=new FrameLayout.LayoutParams(-1,dp(4),Gravity.BOTTOM);
+        bar.bottomMargin=dp(2);bar.leftMargin=dp(8);bar.rightMargin=dp(8);
+        card.addView(line,bar);
+        card.setForeground(focusStroke(false));
+        card.setOnFocusChangeListener((v,focused)->card.setForeground(focusStroke(focused)));
+        card.setOnClickListener(v->openWatchEntry(entry));
+        card.setOnLongClickListener(v->{editWatchEntry(entry);return true;});
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,1);
+        lp.setMargins(0,0,dp(8),0);
+        parent.addView(card,lp);
+    }
+    private void watchlistStrip(LinearLayout parent,List<WatchlistStore.Entry> watch){
+        LinearLayout row=row();row.setPadding(dp(2),0,dp(2),dp(2));
+        int count=0;
+        for(WatchlistStore.Entry entry:watch){
+            if(count==4)break;
+            watchCard(row,entry);count++;
+        }
+        if(count<4)cinemaCard(row,"+ Добавить",null,null,this::addWatchEntry);
+        parent.addView(row,new LinearLayout.LayoutParams(-1,dp(117)));
+    }
+    private void openWatchEntry(WatchlistStore.Entry entry){
+        TvApp service=appByPackage(entry.packageName);
+        if(service==null){
+            Toast.makeText(this,"Видеоприложение не найдено",Toast.LENGTH_LONG).show();
+            return;
+        }
+        if(isYouTube(service))launchYouTube();else openDirect(service);
+        // Actual episode deep links and playback positions require provider integration.
+    }
     private void cinemaStrip(LinearLayout parent,List<TvApp> first,List<TvApp> fallback){
         cinemaCardIndex=0;
         ArrayList<TvApp> chosen=new ArrayList<>();
