@@ -103,7 +103,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         activityVisible=true;
-        if(heroCarousel!=null)heroCarousel.setActive(true);
+        if(heroCarousel!=null)heroCarousel.setActive(quickOverlay==null);
         indicatorHandler.removeCallbacks(indicatorTicker);
         indicatorHandler.post(indicatorTicker);
         if(panel==null)return;
@@ -1431,7 +1431,7 @@ public final class MainActivity extends Activity {
         action(c,"Скорость смены постеров",
             preferences.getInt("carousel_interval",30)+" секунд · плавный переход",
             this::changeCarouselInterval);
-        action(c,"Выбрать встроенный постер","Ручной выбор одной из четырёх картинок",
+        action(c,"Зафиксировать встроенный постер","Выбрать изображение и отключить автосмену",
             this::chooseCarouselPoster);
         action(c,"Свой постер","Выбрать изображение с устройства (приоритет над каруселью)",
             this::pickPoster);
@@ -1514,6 +1514,7 @@ public final class MainActivity extends Activity {
                 Math.floorMod(preferences.getInt("carousel_index",0),4),
                 (dialog,index)->{
                     preferences.edit().putInt("carousel_index",index)
+                        .putBoolean("carousel_autoplay",false)
                         .remove("hero_poster").apply();
                     customPoster=null;
                     dialog.dismiss();
