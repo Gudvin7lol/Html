@@ -558,6 +558,118 @@ public final class MainActivity extends Activity {
         if(isYouTube(service))launchYouTube();else openDirect(service);
         // Actual episode deep links and playback positions require provider integration.
     }
+    private void watchlistPage(LinearLayout c){
+        title(c,"Моя медиатека","Ваши фильмы и сериалы. Обложки и прогресс задаются вручную.");
+        action(c,"+ Добавить фильм или сериал",
+            "Выбрать видеосервис, название и обложку",this::addWatchEntry);
+        List<WatchlistStore.Entry> all=WatchlistStore.load(preferences);
+        if(all.isEmpty()){
+            gap(c,10);
+            c.addView(text("Пока здесь пусто. Добавьте первый фильм или сериал.",
+                16,MUTED,false));
+        }else{
+            c.addView(text("ОК — открыть видеосервис · долгое ОК — редактировать",
+                12,MUTED,false));
+            gap(c,12);
+            for(int start=0;start<all.size();start+=4){
+                LinearLayout r=row();
+                int end=Math.min(start+4,all.size());
+                for(int i=start;i<end;i++)watchCard(r,all.get(i));
+                for(int i=end;i<start+4;i++){
+                    View filler=new View(this);
+                    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1);
+                    p.setMargins(0,0,dp(8),0);r.addView(filler,p);
+                }
+                c.addView(r,new LinearLayout.LayoutParams(-1,dp(143)));
+                gap(c,10);
+            }
+        }
+        gap(c,14);
+        c.addView(text("Лаунчер не получает историю просмотра из Netflix, Кинопоиска и других сервисов. Процент отмечается вами. При открытии карточки запускается выбранное приложение.",
+            12,MUTED,false));
+    }
+    private void addWatchEntry(){
+        ArrayList<TvApp> services=new ArrayList<>();
+        for(TvApp app:forHome())if(isMedia(app))services.add(app);
+        if(services.isEmpty())services.addAll(forHome());
+        if(services.isEmpty()){
+            Toast.makeText(this,"Нет доступных приложений",Toast.LENGTH_LONG).show();return;
+        }
+        String[] labels=new String[services.size()];
+        for(int i=0;i<labels.length;i++)labels[i]=services.get(i).label;
+        new AlertDialog.Builder(this).setTitle("Выберите видеосервис")
+            .setItems(labels,(dialog,which)->{
+                TvApp service=services.get(which);
+                EditText input=new EditText(this);
+                input.setSingleLine(true);
+                input.setHint("Название фильма или сериала");
+                input.setFilters(new android.text.InputFilter[]{
+                    new android.text.InputFilter.LengthFilter(80)});
+                LinearLayout holder=col();
+                holder.setPadding(dp(22),dp(7),dp(22),dp(7));
+                holder.addView(input);
+                new AlertDialog.Builder(this).setTitle("Добавить в медиатеку")
+                    .setView(holder)
+                    .setPositiveButton("Добавить",(d,button)->{
+                        WatchlistStore.Entry entry=WatchlistStore.add(preferences,
+                            input.getText().toString(),service.pkg);
+                        if(entry==null){
+                            Toast.makeText(this,"Введите название. Лимит: 30 фильмов.",
+                                Toast.LENGTH_LONG).show();return;
+                        }
+                        switchTo(10);
+                        editWatchEntry(entry);
+                    }).setNegativeButton("Отмена",null).show();
+            }).setNegativeButton("Отмена",null).show();
+    }
+    private void editWatchEntry(WatchlistStore.Entry entry){
+        String[] actions={"Открыть видеосервис","Переименовать","Прогресс просмотра",
+            "Выбрать обложку","Удалить из медиатеки"};
+        new AlertDialog.Builder(this).setTitle(entry.title)
+            .setItems(actions,(dialog,which)->{
+                if(which==0){openWatchEntry(entry);return;}
+                if(which==1){
+                    EditText input=new EditText(this);
+                    input.setSingleLine(true);input.setText(entry.title);
+                    input.setFilters(new android.text.InputFilter[]{
+                        new android.text.InputFilter.LengthFilter(80)});
+                    new AlertDialog.Builder(this).setTitle("Название")
+                        .setView(input).setPositiveButton("Сохранить",(d,b)->{
+                            String value=input.getText().toString().trim();
+                            if(!value.isEmpty()){
+                                entry.title=value;
+                                WatchlistStore.update(preferences,entry);render(page);
+                            }
+                        }).setNegativeButton("Отмена",null).show();
+                    return;
+                }
+                if(which==2){
+                    final String[] levels={"0%","10%","20%","30%","40%","50%",
+                        "60%","70%","80%","90%","100%"};
+                    new AlertDialog.Builder(this).setTitle("Прогресс вручную")
+                        .setSingleChoiceItems(levels,entry.progress/10,(d,choice)->{
+                            entry.progress=choice*10;
+                            WatchlistStore.update(preferences,entry);
+                            d.dismiss();render(page);
+                        }).setNegativeButton("Отмена",null).show();return;
+                }
+                if(which==3){
+                    pendingWatchPosterId=entry.id;
+                    Intent picker=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    picker.addCategory(Intent.CATEGORY_OPENABLE);
+                    picker.setType("image/*");
+                    try{startActivityForResult(picker,REQ_WATCH_POSTER);}
+                    catch(Exception e){Toast.makeText(this,"Выбор обложки недоступен",
+                        Toast.LENGTH_LONG).show();}
+                    return;
+                }
+                new AlertDialog.Builder(this).setTitle("Удалить фильм?")
+                    .setMessage("Запись удалится только из медиатеки.")
+                    .setPositiveButton("Удалить",(d,b)->{
+                        WatchlistStore.remove(preferences,entry.id);render(page);
+                    }).setNegativeButton("Отмена",null).show();
+            }).setNegativeButton("Закрыть",null).show();
+    }
     private void cinemaStrip(LinearLayout parent,List<TvApp> first,List<TvApp> fallback){
         cinemaCardIndex=0;
         ArrayList<TvApp> chosen=new ArrayList<>();
