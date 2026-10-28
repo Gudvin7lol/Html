@@ -45,6 +45,9 @@ public final class LauncherBackup {
         options.put("youtube_vpn",p.getBoolean("youtube_vpn",true));
         options.put("large_cards",p.getBoolean("large_cards",true));
         options.put("show_recent",p.getBoolean("show_recent",true));
+        options.put("carousel_autoplay",p.getBoolean("carousel_autoplay",true));
+        options.put("carousel_index",Math.floorMod(p.getInt("carousel_index",0),4));
+        options.put("carousel_interval",p.getInt("carousel_interval",30));
         options.put("featured_title",p.getString("featured_title","НОВЫЕ МИРЫ"));
         options.put("featured_caption",p.getString("featured_caption",
             "Любимые истории и установленные сервисы."));
@@ -102,6 +105,10 @@ public final class LauncherBackup {
         boolean vpn=options.optBoolean("youtube_vpn",true);
         boolean large=options.optBoolean("large_cards",true);
         boolean recentEnabled=options.optBoolean("show_recent",true);
+        boolean rotate=options.optBoolean("carousel_autoplay",true);
+        int posterIndex=Math.floorMod(options.optInt("carousel_index",0),4);
+        int carouselInterval=options.optInt("carousel_interval",30);
+        if(carouselInterval!=15&&carouselInterval!=30&&carouselInterval!=60)carouselInterval=30;
         String featuredTitle=options.optString("featured_title","НОВЫЕ МИРЫ");
         String featuredCaption=options.optString("featured_caption",
             "Любимые истории и установленные сервисы.");
@@ -135,6 +142,9 @@ public final class LauncherBackup {
           .putBoolean("youtube_vpn",vpn)
           .putBoolean("large_cards",large)
           .putBoolean("show_recent",recentEnabled)
+          .putBoolean("carousel_autoplay",rotate)
+          .putInt("carousel_index",posterIndex)
+          .putInt("carousel_interval",carouselInterval)
           .putString("featured_title",featuredTitle)
           .putString("featured_caption",featuredCaption)
           .apply();
