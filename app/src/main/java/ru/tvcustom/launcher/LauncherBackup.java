@@ -48,9 +48,6 @@ public final class LauncherBackup {
         options.put("carousel_autoplay",p.getBoolean("carousel_autoplay",true));
         options.put("carousel_interval",p.getInt("carousel_interval",30));
         options.put("carousel_index",p.getInt("carousel_index",0));
-        options.put("carousel_autoplay",p.getBoolean("carousel_autoplay",true));
-        options.put("carousel_index",Math.floorMod(p.getInt("carousel_index",0),4));
-        options.put("carousel_interval",p.getInt("carousel_interval",30));
         options.put("featured_title",p.getString("featured_title","НОВЫЕ МИРЫ"));
         options.put("featured_caption",p.getString("featured_caption",
             "Любимые истории и установленные сервисы."));
@@ -113,10 +110,6 @@ public final class LauncherBackup {
         if(carouselInterval!=15&&carouselInterval!=30&&carouselInterval!=60)
             carouselInterval=30;
         int carouselIndex=Math.floorMod(options.optInt("carousel_index",0),4);
-        boolean rotate=options.optBoolean("carousel_autoplay",true);
-        int posterIndex=Math.floorMod(options.optInt("carousel_index",0),4);
-        int carouselInterval=options.optInt("carousel_interval",30);
-        if(carouselInterval!=15&&carouselInterval!=30&&carouselInterval!=60)carouselInterval=30;
         String featuredTitle=options.optString("featured_title","НОВЫЕ МИРЫ");
         String featuredCaption=options.optString("featured_caption",
             "Любимые истории и установленные сервисы.");
@@ -153,9 +146,6 @@ public final class LauncherBackup {
           .putBoolean("carousel_autoplay",carouselAutoplay)
           .putInt("carousel_interval",carouselInterval)
           .putInt("carousel_index",carouselIndex)
-          .putBoolean("carousel_autoplay",rotate)
-          .putInt("carousel_index",posterIndex)
-          .putInt("carousel_interval",carouselInterval)
           .putString("featured_title",featuredTitle)
           .putString("featured_caption",featuredCaption)
           .apply();
