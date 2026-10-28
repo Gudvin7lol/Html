@@ -49,6 +49,17 @@ public final class LauncherBackup {
         options.put("featured_caption",p.getString("featured_caption",
             "Любимые истории и установленные сервисы."));
         output.put("options",options);
+        JSONArray watch=new JSONArray();
+        for(WatchlistStore.Entry entry:WatchlistStore.load(p)){
+            JSONObject item=new JSONObject();
+            item.put("id",entry.id);
+            item.put("title",entry.title);
+            item.put("package",entry.packageName);
+            item.put("progress",entry.progress);
+            // SAF image grants don't migrate across installs.
+            watch.put(item);
+        }
+        output.put("watchlist",watch);
         // SAF URI permission doesn't migrate across installs, so poster_uri is not backed up.
         return output.toString(2);
     }
@@ -96,6 +107,24 @@ public final class LauncherBackup {
             "Любимые истории и установленные сервисы.");
         if(featuredTitle.length()>32 || featuredCaption.length()>90)
             throw new JSONException("Слишком длинная подпись постера");
+        JSONArray watchData=data.optJSONArray("watchlist");
+        ArrayList<WatchlistStore.Entry> watch=new ArrayList<>();
+        if(watchData!=null){
+            if(watchData.length()>30)throw new JSONException("Слишком много фильмов");
+            for(int i=0;i<watchData.length();i++){
+                JSONObject item=watchData.optJSONObject(i);
+                if(item==null)throw new JSONException("Повреждённая медиатека");
+                String id=item.optString("id","");
+                String title=item.optString("title","");
+                String pkg=item.optString("package","");
+                int progress=item.optInt("progress",0);
+                if(id.length()<1||id.length()>80||title.length()<1||title.length()>80||
+                   !pkg.matches("[A-Za-z][A-Za-z0-9_.]{1,199}")||
+                   progress<0||progress>100)
+                    throw new JSONException("Некорректный фильм в медиатеке");
+                watch.add(new WatchlistStore.Entry(id,title,pkg,progress,""));
+            }
+        }
         p.edit()
           .putString("favorite_order",android.text.TextUtils.join(",",ids))
           .putString("recent_apps",android.text.TextUtils.join(",",recent))
@@ -109,6 +138,7 @@ public final class LauncherBackup {
           .putString("featured_title",featuredTitle)
           .putString("featured_caption",featuredCaption)
           .apply();
+        if(watchData!=null)WatchlistStore.save(p,watch);
         return ids.size();
     }
 }
