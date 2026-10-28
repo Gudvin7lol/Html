@@ -74,6 +74,8 @@ public final class MainActivity extends Activity {
         }
     };
     private Bitmap customPoster;
+    private HeroCarouselView heroCarousel;
+    private boolean activityVisible=false;
     private static final int REQ_POSTER=439;
     private static final int REQ_EXPORT=440, REQ_IMPORT=441, REQ_WATCH_POSTER=442;
     private String pendingWatchPosterId="";
@@ -100,6 +102,8 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onResume() {
         super.onResume();
+        activityVisible=true;
+        if(heroCarousel!=null)heroCarousel.setActive(true);
         indicatorHandler.removeCallbacks(indicatorTicker);
         indicatorHandler.post(indicatorTicker);
         if(panel==null)return;
@@ -129,6 +133,8 @@ public final class MainActivity extends Activity {
         }
     }
     @Override protected void onPause() {
+        activityVisible=false;
+        if(heroCarousel!=null)heroCarousel.setActive(false);
         indicatorHandler.removeCallbacks(indicatorTicker);
         super.onPause();
     }
@@ -289,6 +295,7 @@ public final class MainActivity extends Activity {
     private void render(int to){
         if(panel==null)return;
         highlightPage();
+        if(heroCarousel!=null){heroCarousel.setActive(false);heroCarousel=null;}
         panel.removeAllViews();
         ScrollView sc=new ScrollView(this);
         currentScroll=sc;
@@ -346,6 +353,15 @@ public final class MainActivity extends Activity {
         if(subtitle!=null)parent.addView(text(subtitle,13,MUTED,false));
         gap(parent,16);
     }
+    private static final String[] CAROUSEL_TITLES={
+        "НОВЫЕ ГОРИЗОНТЫ","ГОРОД БУДУЩЕГО","ЗОЛОТЫЕ КОРОЛЕВСТВА","ЗА ГРАНЬЮ ШТОРМА"
+    };
+    private static final String[] CAROUSEL_SUBTITLES={
+        "Новые миры, далёкие планеты и эпические приключения.",
+        "Ночной мегаполис, огни будущего и фантастические истории.",
+        "Легенды, королевства и миры за пределами воображения.",
+        "Море, грозовые облака и герои больших историй."
+    };
     private void home(LinearLayout c){
         float sh=getResources().getDisplayMetrics().heightPixels/
             getResources().getDisplayMetrics().density;
@@ -355,12 +371,15 @@ public final class MainActivity extends Activity {
         FrameLayout hero=new FrameLayout(this);
         hero.setBackground(glass(0xFA0C1421,false,17));
         hero.setClipToOutline(true);
-        Bitmap poster=loadPoster();
-        if(poster!=null){
-            ImageView bg=new ImageView(this);
-            bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            bg.setImageBitmap(poster);
-            hero.addView(bg,new FrameLayout.LayoutParams(-1,-1));
+        boolean useCustomPoster=!preferences.getString("hero_poster","").isEmpty();
+        if(useCustomPoster){
+            Bitmap poster=loadPoster();
+            if(poster!=null){
+                ImageView bg=new ImageView(this);
+                bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                bg.setImageBitmap(poster);
+                hero.addView(bg,new FrameLayout.LayoutParams(-1,-1));
+            }else hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
         }else hero.addView(new HeroScene(this),new FrameLayout.LayoutParams(-1,-1));
         View gradient=new View(this);
         gradient.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
@@ -374,7 +393,8 @@ public final class MainActivity extends Activity {
         TextView eyebrow=text("XIAOMI TV  •  КИНЕМАТОГРАФИЧЕСКАЯ КОЛЛЕКЦИЯ",compact?10:11,0xFFE6D9D2,true);
         eyebrow.setLetterSpacing(.12f);
         content.addView(eyebrow);gap(content,compact?5:9);
-        String featured=preferences.getString("featured_title","НОВЫЕ МИРЫ");
+        int startSlide=Math.floorMod(preferences.getInt("carousel_index",0),4);
+        String featured=preferences.getString("featured_title",CAROUSEL_TITLES[startSlide]);
         TextView headline=text(featured,compact?39:49,0xFFFFC293,false);
         headline.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
         headline.setLetterSpacing(.10f);
@@ -387,8 +407,10 @@ public final class MainActivity extends Activity {
         sub.setLetterSpacing(.10f);content.addView(sub);
         gap(content,compact?9:14);
         String featureDesc=preferences.getString("featured_caption",
-            "Любимые истории и установленные сервисы.\\nБез рекламной ленты.");
-        content.addView(text(featureDesc.replace("\\n","\n"),compact?12:13,0xFFD8DAE4,false));
+            CAROUSEL_SUBTITLES[startSlide]);
+        TextView captionView=text(featureDesc.replace("\\n","\n"),compact?12:13,0xFFD8DAE4,false);
+        captionView.setMaxLines(2);
+        content.addView(captionView);
         gap(content,compact?11:17);
         LinearLayout controls=row();
         pill(controls,"Смотреть",this::openBestVideo);
@@ -426,6 +448,45 @@ public final class MainActivity extends Activity {
         vp.topMargin=dp(50);vp.rightMargin=dp(18);
         hero.addView(vpn,vp);
 
+        if(!useCustomPoster){
+            LinearLayout navigation=row();
+            navigation.setGravity(Gravity.CENTER);
+            navigation.setPadding(dp(8),dp(1),dp(8),dp(1));
+            TextView previous=text("‹",26,WHITE,true);
+            previous.setGravity(Gravity.CENTER);
+            selectable(previous,0xB0192635);
+            previous.setContentDescription("Предыдущий постер");
+            navigation.addView(previous,new LinearLayout.LayoutParams(dp(37),dp(34)));
+
+            TextView counter=text("●  ○  ○  ○",16,0xFFFFCEB4,true);
+            counter.setGravity(Gravity.CENTER);
+            navigation.addView(counter,new LinearLayout.LayoutParams(dp(115),dp(34)));
+
+            TextView next=text("›",26,WHITE,true);
+            next.setGravity(Gravity.CENTER);
+            selectable(next,0xB0192635);
+            next.setContentDescription("Следующий постер");
+            navigation.addView(next,new LinearLayout.LayoutParams(dp(37),dp(34)));
+            FrameLayout.LayoutParams navPlace=new FrameLayout.LayoutParams(dp(209),dp(38),
+                Gravity.RIGHT|Gravity.BOTTOM);
+            navPlace.rightMargin=dp(18);
+            navPlace.bottomMargin=dp(11);
+            hero.addView(navigation,navPlace);
+
+            HeroCarouselView slideshow=new HeroCarouselView(this,preferences,index->{
+                counter.setText((index==0?"●":"○")+"  "+(index==1?"●":"○")+
+                    "  "+(index==2?"●":"○")+"  "+(index==3?"●":"○"));
+                if(!preferences.contains("featured_title"))
+                    headline.setText(CAROUSEL_TITLES[index]);
+                if(!preferences.contains("featured_caption"))
+                    captionView.setText(CAROUSEL_SUBTITLES[index]);
+            });
+            hero.addView(slideshow,1,new FrameLayout.LayoutParams(-1,-1));
+            heroCarousel=slideshow;
+            previous.setOnClickListener(v->slideshow.previous());
+            next.setOnClickListener(v->slideshow.next());
+            slideshow.setActive(activityVisible);
+        }
         int heroHeight=(int)Math.min(380,Math.max(330,sh*.55f));
         c.addView(hero,new LinearLayout.LayoutParams(-1,dp(heroHeight)));
         gap(c,8);
@@ -1332,7 +1393,14 @@ public final class MainActivity extends Activity {
     private void settings(LinearLayout c){
         title(c,"Настройки","Внешний вид, управление и сценарии Xiaomi TV Custom");
         c.addView(text("ВНЕШНИЙ ВИД",12,ACCENT,true));gap(c,9);
-        action(c,"Постер главного экрана","Выбрать свою кинематографическую картинку",this::pickPoster);
+        setting(c,"Автосмена постеров","Четыре встроенных Full HD постера по очереди","carousel_autoplay",true);
+        action(c,"Скорость смены постеров",
+            preferences.getInt("carousel_interval",30)+" секунд · плавный переход",
+            this::changeCarouselInterval);
+        action(c,"Выбрать встроенный постер","Ручной выбор одной из четырёх картинок",
+            this::chooseCarouselPoster);
+        action(c,"Свой постер","Выбрать изображение с устройства (приоритет над каруселью)",
+            this::pickPoster);
         action(c,"Моя медиатека","Названия, прогресс и обложки ваших фильмов",()->switchTo(10));
         action(c,"Заголовок на постере","Изменить большой заголовок главного экрана",
             ()->editFeaturedText("featured_title","Заголовок постера",32,
@@ -1340,7 +1408,7 @@ public final class MainActivity extends Activity {
         action(c,"Описание постера","Подпись под названием и перед кнопками",
             ()->editFeaturedText("featured_caption","Описание постера",90,
                 "Любимые истории и установленные сервисы."));
-        action(c,"Сбросить постер","Вернуть встроенный кинематографический фон",()->{
+        action(c,"Вернуть встроенные постеры","Отключить свой постер и показать карусель",()->{
             customPoster=null;preferences.edit().remove("hero_poster").apply();render(5);
         });
         setting(c,"Кинематографический фон","Тёмные горы и мягкие акценты, без видео","scenic",true);
@@ -1390,7 +1458,33 @@ public final class MainActivity extends Activity {
                 }).show();
         });
         gap(c,13);
-        c.addView(text("Xiaomi TV Custom 1.14 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+        c.addView(text("Xiaomi TV Custom 1.15 · Android TV 11 · без root и фоновых служб",12,MUTED,false));
+    }
+    private void changeCarouselInterval(){
+        final String[] options={"15 секунд","30 секунд","60 секунд"};
+        final int[] seconds={15,30,60};
+        new AlertDialog.Builder(this).setTitle("Как часто менять постер?")
+            .setSingleChoiceItems(options,
+                preferences.getInt("carousel_interval",30)==15?0:
+                preferences.getInt("carousel_interval",30)==60?2:1,
+                (dialog,index)->{
+                    preferences.edit().putInt("carousel_interval",seconds[index]).apply();
+                    dialog.dismiss();render(5);
+                }).setNegativeButton("Отмена",null).show();
+    }
+    private void chooseCarouselPoster(){
+        final String[] options={"Эпическая пустыня","Неоновый город",
+            "Золотое королевство","Огненная цитадель"};
+        new AlertDialog.Builder(this).setTitle("Выберите постер")
+            .setSingleChoiceItems(options,
+                Math.floorMod(preferences.getInt("carousel_index",0),4),
+                (dialog,index)->{
+                    preferences.edit().putInt("carousel_index",index)
+                        .remove("hero_poster").apply();
+                    customPoster=null;
+                    dialog.dismiss();
+                    switchTo(0);
+                }).setNegativeButton("Отмена",null).show();
     }
     private void editFeaturedText(String key,String title,int maxLength,String fallback){
         final EditText input=new EditText(this);
